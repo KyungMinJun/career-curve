@@ -3,6 +3,8 @@ import { Send, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useJobStore } from '@/stores/jobStore';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ChatTabProps {
   onNavigateToBoard: () => void;
@@ -31,6 +33,23 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     }
   };
 
+  const analyzeJobUrl = async (url: string): Promise<any> => {
+    const { data, error } = await supabase.functions.invoke('analyze-job', {
+      body: { url }
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to analyze job posting');
+    }
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to analyze job posting');
+    }
+
+    return data.data;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -44,6 +63,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     addMessage(userMessage);
 
     const isLink = isUrl(inputValue.trim());
+    const urlToAnalyze = inputValue.trim();
     setInputValue('');
 
     if (isLink) {
@@ -57,31 +77,52 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
         createdAt: new Date(),
       });
 
-      // Simulate AI processing
-      setTimeout(() => {
-        // Create job posting
+      try {
+        // Call the edge function to analyze the job posting
+        const jobData = await analyzeJobUrl(urlToAnalyze);
+        
+        // Create job posting from analyzed data
         const newJobId = (Date.now() + 2).toString();
         addJobPosting({
           id: newJobId,
-          companyName: '새로운 회사',
-          title: '채용 공고',
+          companyName: jobData.companyName || '회사명 확인 필요',
+          title: jobData.title || '채용 공고',
           status: 'reviewing',
           priority: 4,
           quickInterest: 'medium',
-          position: '미정',
-          summary: '링크에서 추출된 공고 정보가 여기에 표시됩니다.',
-          sourceUrl: inputValue,
+          position: jobData.position || '미정',
+          minExperience: jobData.minExperience,
+          workType: jobData.workType,
+          location: jobData.location,
+          visaSponsorship: jobData.visaSponsorship,
+          summary: jobData.summary || '공고 내용을 확인해주세요.',
+          companyScore: jobData.companyScore || 3,
+          fitScore: jobData.fitScore || 3,
+          sourceUrl: urlToAnalyze,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
 
         // Update processing message
         updateMessage(processingId, {
-          content: '이직 보드에 추가됨',
+          content: `✅ 이직 보드에 추가됨\n\n${jobData.companyName} - ${jobData.title}`,
           isProcessing: false,
           jobPostingId: newJobId,
         });
-      }, 2000);
+
+        toast.success('공고가 분석되어 보드에 추가되었습니다');
+
+      } catch (error) {
+        console.error('Error analyzing job:', error);
+        
+        // Update to error message
+        updateMessage(processingId, {
+          content: '❌ 공고 분석에 실패했습니다. 링크를 확인하거나 공고 내용을 직접 붙여넣어 주세요.',
+          isProcessing: false,
+        });
+
+        toast.error(error instanceof Error ? error.message : '공고 분석 실패');
+      }
     } else {
       // Regular text message
       setTimeout(() => {
