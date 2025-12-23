@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, FileText, Upload, Trash2, Edit2, ChevronDown, ChevronUp, File, Loader2 } from 'lucide-react';
+import { Plus, FileText, Upload, Trash2, Edit2, ChevronDown, ChevronUp, File, Loader2, Briefcase, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -18,17 +18,30 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Experience, Resume } from '@/types/job';
+import { Experience, Resume, ExperienceType } from '@/types/job';
+import { supabase } from '@/integrations/supabase/client';
 
 export function CareerTab() {
-  const { experiences, resumes, addExperience, updateExperience, removeExperience, addResume, removeResume } = useJobStore();
+  const { experiences, resumes, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume } = useJobStore();
   const [resumesOpen, setResumesOpen] = useState(true);
-  const [experienceOpen, setExperienceOpen] = useState(true);
+  const [workOpen, setWorkOpen] = useState(true);
+  const [projectOpen, setProjectOpen] = useState(true);
   const [isAddingExperience, setIsAddingExperience] = useState(false);
   const [editingExperience, setEditingExperience] = useState<string | null>(null);
+  const [newExperienceType, setNewExperienceType] = useState<ExperienceType>('work');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const workExperiences = experiences.filter(e => e.type === 'work');
+  const projectExperiences = experiences.filter(e => e.type === 'project');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -41,9 +54,7 @@ export function CareerTab() {
 
     setIsUploading(true);
 
-    // Simulate upload - in real implementation, upload to Supabase Storage
     try {
-      // For now, create a local URL
       const fileUrl = URL.createObjectURL(file);
       
       const newResume: Resume = {
@@ -55,10 +66,37 @@ export function CareerTab() {
       };
 
       addResume(newResume);
-      toast.success('이력서가 업로드되었습니다');
+      toast.success('이력서가 업로드되었습니다. 분석 중...');
 
-      // TODO: Trigger AI parsing
-      // In real implementation, call edge function to parse resume
+      // Call AI to parse resume
+      try {
+        const { data, error } = await supabase.functions.invoke('parse-resume', {
+          body: { fileName: file.name, resumeId: newResume.id }
+        });
+
+        if (error) throw error;
+
+        if (data?.experiences) {
+          data.experiences.forEach((exp: any) => {
+            addExperience({
+              id: Date.now().toString() + Math.random(),
+              type: exp.type || 'work',
+              title: exp.title,
+              company: exp.company,
+              description: exp.description || '',
+              bullets: exp.bullets || [],
+              usedInPostings: [],
+              createdAt: new Date(),
+            });
+          });
+          updateResume(newResume.id, { parseStatus: 'success' });
+          toast.success('이력서 분석이 완료되었습니다!');
+        }
+      } catch (parseError) {
+        console.error('Resume parse error:', parseError);
+        updateResume(newResume.id, { parseStatus: 'fail', parseError: '분석 실패' });
+        toast.error('이력서 분석에 실패했습니다. 경험을 직접 추가해주세요.');
+      }
     } catch (error) {
       toast.error('업로드 실패. 다시 시도해주세요.');
     } finally {
@@ -67,6 +105,11 @@ export function CareerTab() {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleAddExperience = (type: ExperienceType) => {
+    setNewExperienceType(type);
+    setIsAddingExperience(true);
   };
 
   return (
@@ -93,7 +136,6 @@ export function CareerTab() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -102,7 +144,6 @@ export function CareerTab() {
                   className="hidden"
                 />
 
-                {/* Upload Resume Button */}
                 <Button 
                   variant="outline" 
                   className="w-full border-dashed"
@@ -117,7 +158,6 @@ export function CareerTab() {
                   이력서 업로드 (PDF)
                 </Button>
 
-                {/* Resume Cards */}
                 {resumes.map((resume) => (
                   <div key={resume.id} className="bg-secondary/30 rounded-lg p-3 group">
                     <div className="flex items-center justify-between">
@@ -128,14 +168,14 @@ export function CareerTab() {
                             {resume.fileName}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {resume.uploadedAt.toLocaleDateString('ko-KR')}
+                            {new Date(resume.uploadedAt).toLocaleDateString('ko-KR')}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
                           variant={resume.parseStatus === 'success' ? 'default' : 'secondary'}
-                          className="text-xs"
+                          className={cn('text-xs', resume.parseStatus === 'pending' && 'animate-pulse')}
                         >
                           {resume.parseStatus === 'pending' && '분석 중'}
                           {resume.parseStatus === 'success' && '완료'}
@@ -156,7 +196,7 @@ export function CareerTab() {
 
                 {resumes.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-2">
-                    아직 업로드된 이력서가 없습니다
+                    이력서를 업로드하면 자동으로 분석됩니다
                   </p>
                 )}
               </div>
@@ -164,72 +204,74 @@ export function CareerTab() {
           </div>
         </Collapsible>
 
-        {/* Experiences Section */}
-        <Collapsible open={experienceOpen} onOpenChange={setExperienceOpen}>
+        {/* Work Experience Section */}
+        <Collapsible open={workOpen} onOpenChange={setWorkOpen}>
           <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">경험</h2>
-                <Badge variant="secondary" className="text-xs">{experiences.length}</Badge>
+                <Briefcase className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold text-foreground">경력</h2>
+                <Badge variant="secondary" className="text-xs">{workExperiences.length}</Badge>
               </div>
-              {experienceOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              {workOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
             </CollapsibleTrigger>
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {/* Experience Cards */}
-                {experiences.map((exp) => (
-                  <div key={exp.id} className="bg-secondary/30 rounded-lg p-3 group">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-semibold text-sm text-foreground">{exp.title}</h3>
-                        {exp.company && <p className="text-xs text-muted-foreground">{exp.company}</p>}
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="w-7 h-7"
-                          onClick={() => setEditingExperience(exp.id)}
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="w-7 h-7 text-destructive hover:text-destructive"
-                          onClick={() => removeExperience(exp.id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <ul className="space-y-1 text-xs text-muted-foreground">
-                      {exp.bullets.slice(0, 3).map((bullet, i) => (
-                        <li key={i} className="flex gap-2">
-                          <span className="text-primary">•</span>
-                          <span>{bullet}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    {exp.usedInPostings.length > 0 && (
-                      <Badge variant="secondary" className="text-xs mt-2">
-                        {exp.usedInPostings.length}개 공고에 사용됨
-                      </Badge>
-                    )}
-                  </div>
+                {workExperiences.map((exp) => (
+                  <ExperienceCard 
+                    key={exp.id} 
+                    experience={exp} 
+                    onEdit={() => setEditingExperience(exp.id)}
+                    onDelete={() => removeExperience(exp.id)}
+                  />
                 ))}
 
-                {/* Add Experience Button */}
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   className="w-full"
-                  onClick={() => setIsAddingExperience(true)}
+                  onClick={() => handleAddExperience('work')}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  경험 추가
+                  경력 추가
+                </Button>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        {/* Project Section */}
+        <Collapsible open={projectOpen} onOpenChange={setProjectOpen}>
+          <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
+              <div className="flex items-center gap-2">
+                <FolderKanban className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold text-foreground">프로젝트</h2>
+                <Badge variant="secondary" className="text-xs">{projectExperiences.length}</Badge>
+              </div>
+              {projectOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-3">
+                {projectExperiences.map((exp) => (
+                  <ExperienceCard 
+                    key={exp.id} 
+                    experience={exp} 
+                    onEdit={() => setEditingExperience(exp.id)}
+                    onDelete={() => removeExperience(exp.id)}
+                  />
+                ))}
+
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => handleAddExperience('project')}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  프로젝트 추가
                 </Button>
               </div>
             </CollapsibleContent>
@@ -247,17 +289,14 @@ export function CareerTab() {
           }
         }}
         experience={editingExperience ? experiences.find(e => e.id === editingExperience) : undefined}
+        defaultType={newExperienceType}
         onSave={(exp) => {
           if (editingExperience) {
             updateExperience(editingExperience, exp);
           } else {
             addExperience({ 
               id: Date.now().toString(), 
-              title: exp.title,
-              company: exp.company,
-              description: exp.description,
-              bullets: exp.bullets,
-              usedInPostings: exp.usedInPostings,
+              ...exp,
               createdAt: new Date() 
             });
           }
@@ -269,15 +308,46 @@ export function CareerTab() {
   );
 }
 
+function ExperienceCard({ experience, onEdit, onDelete }: { experience: Experience; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="bg-secondary/30 rounded-lg p-3 group">
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <h3 className="font-semibold text-sm text-foreground">{experience.title}</h3>
+          {experience.company && <p className="text-xs text-muted-foreground">{experience.company}</p>}
+        </div>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" className="w-7 h-7" onClick={onEdit}>
+            <Edit2 className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:text-destructive" onClick={onDelete}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+      <ul className="space-y-1 text-xs text-muted-foreground">
+        {experience.bullets.slice(0, 3).map((bullet, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="text-primary">•</span>
+            <span>{bullet}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 interface ExperienceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   experience?: Experience;
+  defaultType: ExperienceType;
   onSave: (exp: Omit<Experience, 'id' | 'createdAt'>) => void;
 }
 
-function ExperienceDialog({ open, onOpenChange, experience, onSave }: ExperienceDialogProps) {
+function ExperienceDialog({ open, onOpenChange, experience, defaultType, onSave }: ExperienceDialogProps) {
   const [formData, setFormData] = useState({
+    type: experience?.type || defaultType,
     title: experience?.title || '',
     company: experience?.company || '',
     description: experience?.description || '',
@@ -287,6 +357,7 @@ function ExperienceDialog({ open, onOpenChange, experience, onSave }: Experience
 
   const handleSave = () => {
     onSave({
+      type: formData.type,
       title: formData.title,
       company: formData.company || undefined,
       description: formData.description,
@@ -299,22 +370,35 @@ function ExperienceDialog({ open, onOpenChange, experience, onSave }: Experience
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90%] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{experience ? '경험 수정' : '경험 추가'}</DialogTitle>
+          <DialogTitle>{experience ? '수정' : formData.type === 'work' ? '경력 추가' : '프로젝트 추가'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Label>유형</Label>
+            <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v as ExperienceType })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="work">경력</SelectItem>
+                <SelectItem value="project">프로젝트</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="expTitle">제목</Label>
             <Input
               id="expTitle"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="예: 시니어 프론트엔드 개발자"
+              placeholder={formData.type === 'work' ? '예: 시니어 프론트엔드 개발자' : '예: 커머스 플랫폼 개발'}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="expCompany">회사</Label>
+            <Label htmlFor="expCompany">{formData.type === 'work' ? '회사' : '조직/팀'}</Label>
             <Input
               id="expCompany"
               value={formData.company}
