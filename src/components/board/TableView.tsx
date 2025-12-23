@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { JobPosting, JobStatus, QuickInterest, STATUS_LABELS, STATUS_COLORS, INTEREST_LABELS } from '@/types/job';
+import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from '@/types/job';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,6 @@ import {
   Filter, 
   ArrowUpDown, 
   Settings2, 
-  ChevronDown,
   Star 
 } from 'lucide-react';
 
@@ -47,7 +46,6 @@ const DEFAULT_COLUMNS = [
   { key: 'workType', label: '근무형태', visible: true },
   { key: 'location', label: '위치', visible: true },
   { key: 'visaSponsorship', label: '비자', visible: false },
-  { key: 'quickInterest', label: '관심', visible: true },
 ];
 
 export function TableView({ jobs }: TableViewProps) {
@@ -59,7 +57,6 @@ export function TableView({ jobs }: TableViewProps) {
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
 
-  // Filter and sort jobs
   const filteredJobs = jobs
     .filter((job) => statusFilter === 'all' || job.status === statusFilter)
     .sort((a, b) => {
@@ -107,7 +104,6 @@ export function TableView({ jobs }: TableViewProps) {
     const isEditing = editingCell?.id === job.id && editingCell?.field === columnKey;
     const value = job[columnKey as keyof JobPosting];
 
-    // Status - Select dropdown
     if (columnKey === 'status') {
       return (
         <Select
@@ -130,54 +126,41 @@ export function TableView({ jobs }: TableViewProps) {
       );
     }
 
-    // Quick Interest - Toggle buttons
-    if (columnKey === 'quickInterest') {
-      return (
-        <div className="flex gap-1">
-          {(['high', 'medium', 'low'] as QuickInterest[]).map((interest) => (
-            <button
-              key={interest}
-              onClick={(e) => {
-                e.stopPropagation();
-                updateJobPosting(job.id, { quickInterest: interest });
-              }}
-              className={cn(
-                'w-6 h-6 rounded flex items-center justify-center text-sm transition-colors',
-                job.quickInterest === interest 
-                  ? 'bg-primary/20 text-primary' 
-                  : 'hover:bg-secondary'
-              )}
-            >
-              {INTEREST_LABELS[interest]}
-            </button>
-          ))}
-        </div>
-      );
-    }
-
-    // Priority - Badge
     if (columnKey === 'priority') {
       return (
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold text-primary">#{job.priority}</span>
-          {job.fitScore && (
-            <div className="flex">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    'w-3 h-3',
-                    i <= job.fitScore! ? 'fill-primary text-primary' : 'text-muted'
-                  )}
-                />
-              ))}
+        <Select
+          value={job.priority.toString()}
+          onValueChange={(v) => updateJobPosting(job.id, { priority: parseInt(v) })}
+        >
+          <SelectTrigger className="h-7 w-20 text-xs border-none bg-transparent p-0">
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-semibold text-primary">#{job.priority}</span>
+              {job.fitScore && (
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star
+                      key={i}
+                      className={cn(
+                        'w-3 h-3',
+                        i <= job.fitScore! ? 'fill-primary text-primary' : 'text-muted'
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </SelectTrigger>
+          <SelectContent>
+            {[1, 2, 3, 4, 5].map((p) => (
+              <SelectItem key={p} value={p.toString()} className="text-xs">
+                #{p} {PRIORITY_LABELS[p]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       );
     }
 
-    // Visa sponsorship
     if (columnKey === 'visaSponsorship') {
       const visaValue = job.visaSponsorship;
       return (
@@ -195,7 +178,6 @@ export function TableView({ jobs }: TableViewProps) {
       );
     }
 
-    // Editable text fields
     const editableFields = ['title', 'companyName', 'position', 'minExperience', 'workType', 'location'];
     if (editableFields.includes(columnKey)) {
       if (isEditing) {
@@ -242,9 +224,7 @@ export function TableView({ jobs }: TableViewProps) {
 
   return (
     <div className="h-full px-4 space-y-3">
-      {/* Toolbar */}
       <div className="flex items-center gap-2">
-        {/* Status Filter */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
@@ -271,7 +251,6 @@ export function TableView({ jobs }: TableViewProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Sort */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
@@ -294,7 +273,6 @@ export function TableView({ jobs }: TableViewProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Column Settings */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 ml-auto">
@@ -318,10 +296,8 @@ export function TableView({ jobs }: TableViewProps) {
         </DropdownMenu>
       </div>
 
-      {/* Table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto scrollbar-hide">
-          {/* Table Header */}
           <div 
             className="grid gap-2 px-4 py-3 bg-secondary/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-max"
             style={{ gridTemplateColumns: visibleColumns.map(() => 'minmax(80px, 1fr)').join(' ') }}
@@ -331,7 +307,6 @@ export function TableView({ jobs }: TableViewProps) {
             ))}
           </div>
 
-          {/* Table Rows */}
           <div className="divide-y divide-border">
             {filteredJobs.map((job) => (
               <div
@@ -357,7 +332,6 @@ export function TableView({ jobs }: TableViewProps) {
         </div>
       </div>
 
-      {/* Job Detail Dialog */}
       {selectedJob && (
         <JobDetailDialog
           job={selectedJob}
