@@ -8,12 +8,19 @@ export type JobStatus =
   | 'offer'          // 오퍼
   | 'accepted';      // 합격-최종
 
-// AI-extracted key competency for job posting
+// AI-extracted key competency for job posting (recruiter perspective)
 export interface KeyCompetency {
   title: string;
   description: string;
   score?: number; // User's self-assessment 1-5
   rationale?: string;
+}
+
+// Company criteria scores (per job)
+export interface CompanyCriteriaScore {
+  name: string;
+  weight: number;
+  score?: number; // 1-5
 }
 
 // Job posting data structure
@@ -29,8 +36,9 @@ export interface JobPosting {
   location?: string;
   visaSponsorship?: boolean;
   summary?: string;
-  companyScore?: number; // 1-5
-  fitScore?: number; // 1-5
+  companyScore?: number; // 1-5 average
+  fitScore?: number; // 1-5 average
+  companyCriteriaScores?: CompanyCriteriaScore[]; // Per-job company criteria scores
   keyCompetencies?: KeyCompetency[]; // AI-extracted from recruiter perspective
   sourceUrl?: string;
   createdAt: Date;
@@ -38,8 +46,11 @@ export interface JobPosting {
 }
 
 // Experience/Resume data
+export type ExperienceType = 'work' | 'project';
+
 export interface Experience {
   id: string;
+  type: ExperienceType;
   title: string;
   company?: string;
   description: string;

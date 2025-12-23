@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, KeyCompetency } from '@/types/job';
+import { useState, useEffect } from 'react';
+import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, KeyCompetency, CompanyCriteriaScore } from '@/types/job';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useJobStore } from '@/stores/jobStore';
 import {
@@ -34,7 +35,9 @@ import {
   Briefcase, 
   Calendar,
   Globe,
+  FileText,
 } from 'lucide-react';
+import { ResumeBuilderDialog } from './ResumeBuilderDialog';
 
 interface JobDetailDialogProps {
   job: JobPosting;
@@ -43,12 +46,32 @@ interface JobDetailDialogProps {
 }
 
 export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProps) {
-  const { updateJobPosting, currentGoal } = useJobStore();
+  const { updateJobPosting, currentGoal, experiences } = useJobStore();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [isResumeBuilderOpen, setIsResumeBuilderOpen] = useState(false);
   
-  const [companyScore, setCompanyScore] = useState(job.companyScore || 0);
-  const [fitScore, setFitScore] = useState(job.fitScore || 0);
+  // Initialize company criteria scores from goal or job
+  const [companyCriteriaScores, setCompanyCriteriaScores] = useState<CompanyCriteriaScore[]>(() => {
+    if (job.companyCriteriaScores?.length) {
+      return job.companyCriteriaScores;
+    }
+    return currentGoal?.companyEvalCriteria.map(c => ({ ...c, score: undefined })) || [];
+  });
+
+  // Key competency scores (for fit score)
+  const [keyCompetencyScores, setKeyCompetencyScores] = useState<KeyCompetency[]>(
+    job.keyCompetencies || []
+  );
+
+  // Calculate average scores
+  const companyAvg = companyCriteriaScores.filter(c => c.score).length > 0
+    ? Math.round(companyCriteriaScores.reduce((sum, c) => sum + (c.score || 0), 0) / companyCriteriaScores.filter(c => c.score).length)
+    : 0;
+  
+  const fitAvg = keyCompetencyScores.filter(c => c.score).length > 0
+    ? Math.round(keyCompetencyScores.reduce((sum, c) => sum + (c.score || 0), 0) / keyCompetencyScores.filter(c => c.score).length)
+    : 0;
 
   const handleStatusChange = (status: JobStatus) => {
     updateJobPosting(job.id, { status });
@@ -58,17 +81,36 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
     updateJobPosting(job.id, { priority });
   };
 
-  const handleScoreChange = (type: 'company' | 'fit', score: number) => {
-    if (type === 'company') {
-      setCompanyScore(score);
-      updateJobPosting(job.id, { companyScore: score });
-    } else {
-      setFitScore(score);
-      updateJobPosting(job.id, { fitScore: score });
-    }
-    // Recalculate priority based on scores
-    const avgScore = (type === 'company' ? score : companyScore) + (type === 'fit' ? score : fitScore);
-    const newPriority = Math.max(1, Math.min(5, Math.round(6 - avgScore / 2)));
+  const handleCompanyCriteriaScoreChange = (index: number, score: number) => {
+    const updated = [...companyCriteriaScores];
+    updated[index] = { ...updated[index], score };
+    setCompanyCriteriaScores(updated);
+    
+    const avg = Math.round(updated.reduce((sum, c) => sum + (c.score || 0), 0) / updated.filter(c => c.score).length) || 0;
+    updateJobPosting(job.id, { 
+      companyCriteriaScores: updated, 
+      companyScore: avg 
+    });
+    updatePriority(avg, fitAvg);
+  };
+
+  const handleKeyCompetencyScoreChange = (index: number, score: number) => {
+    const updated = [...keyCompetencyScores];
+    updated[index] = { ...updated[index], score };
+    setKeyCompetencyScores(updated);
+    
+    const avg = Math.round(updated.reduce((sum, c) => sum + (c.score || 0), 0) / updated.filter(c => c.score).length) || 0;
+    updateJobPosting(job.id, { 
+      keyCompetencies: updated, 
+      fitScore: avg 
+    });
+    updatePriority(companyAvg, avg);
+  };
+
+  const updatePriority = (compScore: number, fitScoreVal: number) => {
+    if (compScore === 0 && fitScoreVal === 0) return;
+    const avgScore = ((compScore || 0) + (fitScoreVal || 0)) / 2;
+    const newPriority = Math.max(1, Math.min(5, Math.round(6 - avgScore)));
     updateJobPosting(job.id, { priority: newPriority });
   };
 
@@ -77,56 +119,62 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
     setEditingField(null);
   };
 
-  const renderStarRating = (value: number, onChange: (v: number) => void) => (
+  const renderStarRating = (value: number, onChange: (v: number) => void, size: 'sm' | 'md' = 'md') => (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
         <button key={i} onClick={() => onChange(i)} className="focus:outline-none">
-          <Star className={cn('w-5 h-5 transition-colors', i <= value ? 'fill-primary text-primary' : 'text-muted-foreground hover:text-primary/50')} />
+          <Star className={cn(
+            'transition-colors', 
+            size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
+            i <= value ? 'fill-primary text-primary' : 'text-muted-foreground hover:text-primary/50'
+          )} />
         </button>
       ))}
     </div>
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] p-0 rounded-2xl overflow-hidden">
-        <ScrollArea className="max-h-[85vh]">
-          <div className="p-6 space-y-6">
-            <DialogHeader className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-muted-foreground font-medium">{job.companyName}</p>
-                  <DialogTitle className="text-xl font-bold mt-1">{job.title}</DialogTitle>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md max-h-[85vh] p-0 rounded-2xl overflow-hidden">
+          <ScrollArea className="max-h-[85vh]">
+            <div className="p-6 space-y-6">
+              <DialogHeader className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-muted-foreground font-medium">{job.companyName}</p>
+                    <DialogTitle className="text-xl font-bold mt-1">{job.title}</DialogTitle>
+                  </div>
+                  {job.sourceUrl && (
+                    <Button variant="outline" size="icon" className="shrink-0" onClick={() => window.open(job.sourceUrl, '_blank')}>
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
-                {job.sourceUrl && (
-                  <Button variant="outline" size="icon" className="shrink-0" onClick={() => window.open(job.sourceUrl, '_blank')}>
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              
-              <div className="pt-2">
-                <Select value={job.status} onValueChange={(v) => handleStatusChange(v as JobStatus)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>
-                        <Badge className={cn('text-xs', STATUS_COLORS[key as JobStatus])}>{label}</Badge>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </DialogHeader>
+                
+                <div className="pt-2">
+                  <Select value={job.status} onValueChange={(v) => handleStatusChange(v as JobStatus)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                          <Badge className={cn('text-xs', STATUS_COLORS[key as JobStatus])}>{label}</Badge>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </DialogHeader>
 
-            {/* Priority Section */}
-            <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">우선순위 평가</h3>
-              
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">우선순위 (1이 가장 높음)</Label>
+              {/* Priority Section */}
+              <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">우선순위</h3>
+                  <Badge variant="outline" className="text-sm font-bold">#{job.priority}</Badge>
+                </div>
+                
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((p) => (
                     <Button
@@ -140,73 +188,110 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
                     </Button>
                   ))}
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">회사 매력도</Label>
-                {renderStarRating(companyScore, (v) => handleScoreChange('company', v))}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">내 적합도</Label>
-                {renderStarRating(fitScore, (v) => handleScoreChange('fit', v))}
-              </div>
-            </div>
-
-            {job.summary && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">AI 요약</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed bg-accent/50 rounded-lg p-3">{job.summary}</p>
-              </div>
-            )}
-
-            {/* Key Competencies from AI */}
-            {job.keyCompetencies && job.keyCompetencies.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">핵심 역량 (AI 추출)</h3>
-                {job.keyCompetencies.map((comp, idx) => (
-                  <div key={idx} className="bg-secondary/30 rounded-lg p-3">
-                    <p className="text-sm font-medium">{comp.title}</p>
-                    <p className="text-xs text-muted-foreground">{comp.description}</p>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">회사 매력도</Label>
+                    <div className="flex items-center gap-2">
+                      {companyAvg > 0 && <span className="text-lg font-bold text-primary">{companyAvg}</span>}
+                      <span className="text-xs text-muted-foreground">/ 5</span>
+                    </div>
                   </div>
-                ))}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">내 적합도</Label>
+                    <div className="flex items-center gap-2">
+                      {fitAvg > 0 && <span className="text-lg font-bold text-primary">{fitAvg}</span>}
+                      <span className="text-xs text-muted-foreground">/ 5</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Auto-extracted Fields */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">공고 정보</h3>
-              <div className="grid gap-3">
-                <InfoRow icon={<Briefcase className="w-4 h-4" />} label="포지션" value={job.position} field="position" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('position', v)} />
-                <InfoRow icon={<Calendar className="w-4 h-4" />} label="최소 경력" value={job.minExperience} field="minExperience" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('minExperience', v)} />
-                <InfoRow icon={<Building2 className="w-4 h-4" />} label="근무 형태" value={job.workType} field="workType" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('workType', v)} />
-                <InfoRow icon={<MapPin className="w-4 h-4" />} label="위치" value={job.location} field="location" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('location', v)} />
-                <InfoRow icon={<Globe className="w-4 h-4" />} label="비자 지원" value={job.visaSponsorship === undefined ? '미확인' : job.visaSponsorship ? '가능' : '불가'} field="visaSponsorship" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('visaSponsorship', v === '가능')} isUnconfirmed={job.visaSponsorship === undefined} />
-              </div>
-            </div>
+              {job.summary && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">AI 요약</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed bg-accent/50 rounded-lg p-3">{job.summary}</p>
+                </div>
+              )}
 
-            {/* Detailed Scoring */}
-            <Collapsible open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between px-0">
-                  <span className="font-semibold">자세히 보기 (회사 평가 기준)</span>
-                  <ChevronDown className={cn('w-4 h-4 transition-transform', isDetailOpen && 'rotate-180')} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 pt-4">
+              {/* Key Competencies from AI - with scoring */}
+              {keyCompetencyScores.length > 0 && (
                 <div className="space-y-3">
-                  {currentGoal?.companyEvalCriteria.map((criteria, index) => (
-                    <CriteriaRow key={index} name={criteria.name} weight={criteria.weight} />
+                  <h3 className="text-sm font-semibold text-foreground">핵심 역량 (채용담당자 관점)</h3>
+                  <p className="text-xs text-muted-foreground">AI가 추출한 5가지 핵심 역량입니다. 본인의 적합도를 평가해주세요.</p>
+                  {keyCompetencyScores.map((comp, idx) => (
+                    <div key={idx} className="bg-secondary/30 rounded-lg p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{comp.title}</p>
+                          <p className="text-xs text-muted-foreground">{comp.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">나의 역량:</span>
+                        {renderStarRating(comp.score || 0, (v) => handleKeyCompetencyScoreChange(idx, v), 'sm')}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              )}
 
-            <Button className="w-full" size="lg">이 공고 맞춤 이력서 만들기</Button>
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+              {/* Auto-extracted Fields */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">공고 정보</h3>
+                <div className="grid gap-3">
+                  <InfoRow icon={<Briefcase className="w-4 h-4" />} label="포지션" value={job.position} field="position" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('position', v)} />
+                  <InfoRow icon={<Calendar className="w-4 h-4" />} label="최소 경력" value={job.minExperience} field="minExperience" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('minExperience', v)} />
+                  <InfoRow icon={<Building2 className="w-4 h-4" />} label="근무 형태" value={job.workType} field="workType" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('workType', v)} />
+                  <InfoRow icon={<MapPin className="w-4 h-4" />} label="위치" value={job.location} field="location" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('location', v)} />
+                  <InfoRow icon={<Globe className="w-4 h-4" />} label="비자 지원" value={job.visaSponsorship === undefined ? '미확인' : job.visaSponsorship ? '가능' : '불가'} field="visaSponsorship" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('visaSponsorship', v === '가능')} isUnconfirmed={job.visaSponsorship === undefined} />
+                </div>
+              </div>
+
+              {/* Detailed Company Scoring */}
+              <Collapsible open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between px-0">
+                    <span className="font-semibold">자세히 보기 (회사 평가 5가지)</span>
+                    <ChevronDown className={cn('w-4 h-4 transition-transform', isDetailOpen && 'rotate-180')} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-4">
+                  <p className="text-xs text-muted-foreground">목표 탭에서 설정한 5가지 기준으로 회사를 평가하세요.</p>
+                  {companyCriteriaScores.map((criteria, index) => (
+                    <div key={index} className="bg-secondary/30 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{criteria.name}</span>
+                        <Badge variant="outline" className="text-xs">가중치 {criteria.weight}</Badge>
+                      </div>
+                      {renderStarRating(criteria.score || 0, (v) => handleCompanyCriteriaScoreChange(index, v), 'sm')}
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={() => setIsResumeBuilderOpen(true)}
+                disabled={!keyCompetencyScores.length}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                이 공고 맞춤 이력서 만들기
+              </Button>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <ResumeBuilderDialog
+        open={isResumeBuilderOpen}
+        onOpenChange={setIsResumeBuilderOpen}
+        job={job}
+        keyCompetencies={keyCompetencyScores}
+        experiences={experiences}
+      />
+    </>
   );
 }
 
@@ -240,25 +325,6 @@ function InfoRow({ icon, label, value, field, editingField, setEditingField, onS
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className={cn('text-sm font-medium truncate', isUnconfirmed ? 'text-warning' : 'text-foreground')}>{value || '미확인'}</p>
-      </div>
-    </div>
-  );
-}
-
-function CriteriaRow({ name, weight }: { name: string; weight: number }) {
-  const [score, setScore] = useState(0);
-  return (
-    <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{name}</span>
-        <Badge variant="outline" className="text-xs">가중치 {weight}</Badge>
-      </div>
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <button key={i} onClick={() => setScore(i)} className="focus:outline-none">
-            <Star className={cn('w-4 h-4 transition-colors', i <= score ? 'fill-primary text-primary' : 'text-muted-foreground hover:text-primary/50')} />
-          </button>
-        ))}
       </div>
     </div>
   );
