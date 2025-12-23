@@ -1,12 +1,32 @@
-import * as pdfjsLib from 'pdfjs-dist';
+// Dynamically load PDF.js from CDN to avoid top-level await build issues
+let pdfjsLib: any = null;
 
-// Use CDN worker for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
+async function loadPdfJs() {
+  if (pdfjsLib) return pdfjsLib;
+  
+  // Load PDF.js from CDN
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  
+  await new Promise((resolve, reject) => {
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  
+  // Set worker
+  const pdfjs = (window as any).pdfjsLib;
+  pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  
+  pdfjsLib = pdfjs;
+  return pdfjs;
+}
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
+    const pdfjs = await loadPdfJs();
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     
     let fullText = '';
     
