@@ -72,21 +72,29 @@ serve(async (req) => {
 
     // Step 2: Use AI to analyze and extract job posting information
     const systemPrompt = `You are a job posting analyzer. Extract structured information from job postings.
-    
+
+CRITICAL INSTRUCTIONS:
+1. For each field, you MUST provide the exact source sentence from the job posting as evidence.
+2. If a field is not mentioned or cannot be found, set it to null and set evidence to "공고에 명시되지 않음".
+3. For keyCompetencies: Extract EXACTLY 5 key competencies from the RECRUITER'S perspective - what they would prioritize when evaluating candidates.
+
 Extract and return:
-- companyName: string (company name)
-- title: string (job title)
-- position: string (position category like "프론트엔드", "백엔드", "프로덕트 디자인", "PM" etc)
-- minExperience: string (minimum experience required, e.g. "3년 이상", "신입 가능")
-- workType: string (work type like "재택", "출근", "하이브리드")
-- location: string (work location)
-- visaSponsorship: boolean (if visa sponsorship mentioned)
-- summary: string (3-4 sentence summary of the role in Korean)
-- keyCompetencies: array of 5 objects with {title, description} - THE MOST IMPORTANT: Extract exactly 5 key competencies/skills that a recruiter would prioritize when evaluating candidates. Think from the hiring manager's perspective: what are the must-have experiences and abilities?
-- companyScore: number 1-5 (estimated company attractiveness based on benefits, culture mentions)
+- companyName: company name
+- title: job title  
+- position: position category like "프론트엔드", "백엔드", "프로덕트 디자인", "PM" etc
+- minExperience: minimum experience required (e.g. "3년 이상", "신입 가능")
+- minExperienceEvidence: exact source sentence from job posting
+- workType: work type ("재택", "출근", "하이브리드")
+- workTypeEvidence: exact source sentence from job posting
+- location: work location
+- locationEvidence: exact source sentence from job posting
+- visaSponsorship: boolean or null (if not mentioned)
+- visaSponsorshipEvidence: exact source sentence or "공고에 명시되지 않음"
+- summary: 3-4 sentence summary of the role in Korean
+- keyCompetencies: array of EXACTLY 5 objects with {title, description} - the must-have experiences and abilities from recruiter's perspective
+- companyScore: number 1-5 (estimated company attractiveness based on benefits, culture)
 - fitScore: number 1-5 (general fit score based on role clarity)
 
-If information is not found, use reasonable defaults or null.
 Always respond in Korean for text fields.`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -106,23 +114,39 @@ Always respond in Korean for text fields.`;
             type: "function",
             function: {
               name: "extract_job_posting",
-              description: "Extract structured job posting information",
+              description: "Extract structured job posting information with evidence",
               parameters: {
                 type: "object",
                 properties: {
                   companyName: { type: "string" },
                   title: { type: "string" },
                   position: { type: "string" },
-                  minExperience: { type: "string" },
-                  workType: { type: "string" },
-                  location: { type: "string" },
-                  visaSponsorship: { type: "boolean" },
+                  minExperience: { type: "string", nullable: true },
+                  minExperienceEvidence: { type: "string" },
+                  workType: { type: "string", nullable: true },
+                  workTypeEvidence: { type: "string" },
+                  location: { type: "string", nullable: true },
+                  locationEvidence: { type: "string" },
+                  visaSponsorship: { type: "boolean", nullable: true },
+                  visaSponsorshipEvidence: { type: "string" },
                   summary: { type: "string" },
-                  requirements: { type: "array", items: { type: "string" } },
+                  keyCompetencies: { 
+                    type: "array", 
+                    items: { 
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" }
+                      },
+                      required: ["title", "description"]
+                    },
+                    minItems: 5,
+                    maxItems: 5
+                  },
                   companyScore: { type: "number" },
                   fitScore: { type: "number" }
                 },
-                required: ["companyName", "title", "position", "summary"],
+                required: ["companyName", "title", "position", "summary", "keyCompetencies"],
                 additionalProperties: false
               }
             }
@@ -178,6 +202,7 @@ Always respond in Korean for text fields.`;
         title: pageTitle?.split(/[|-]/)[0]?.trim() || '채용 공고',
         position: '미정',
         summary: '공고 내용을 확인해주세요.',
+        keyCompetencies: [],
         companyScore: 3,
         fitScore: 3
       };

@@ -29,6 +29,27 @@ import { toast } from 'sonner';
 import { Experience, Resume, ExperienceType } from '@/types/job';
 import { supabase } from '@/integrations/supabase/client';
 
+// PDF text extraction helper - uses browser FileReader
+async function extractTextFromPdf(file: File): Promise<string> {
+  // For now, we'll read the file as text - in production you'd use a proper PDF parser
+  // The AI will still try to parse whatever text content it can get
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Try to extract any readable text from the PDF
+      const content = reader.result as string;
+      // Remove binary junk and keep readable parts
+      const cleanedText = content
+        .replace(/[^\x20-\x7E\uAC00-\uD7A3\u3131-\u314E\u314F-\u3163]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      resolve(cleanedText);
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsText(file);
+  });
+}
+
 export function CareerTab() {
   const { experiences, resumes, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume } = useJobStore();
   const [resumesOpen, setResumesOpen] = useState(true);
@@ -68,15 +89,40 @@ export function CareerTab() {
       addResume(newResume);
       toast.success('이력서가 업로드되었습니다. 분석 중...');
 
-      // Call AI to parse resume
+      // Extract text from PDF
+      let resumeText = '';
+      try {
+        resumeText = await extractTextFromPdf(file);
+        console.log('Extracted text length:', resumeText.length);
+      } catch (err) {
+        console.error('Failed to extract PDF text:', err);
+      }
+
+      // If we couldn't extract text, ask user to manually enter
+      if (!resumeText || resumeText.length < 50) {
+        updateResume(newResume.id, { 
+          parseStatus: 'fail', 
+          parseError: 'PDF에서 텍스트를 추출할 수 없습니다. 경험을 직접 추가해주세요.' 
+        });
+        toast.error('PDF 텍스트 추출 실패. 경험을 직접 추가해주세요.');
+        setIsUploading(false);
+        return;
+      }
+
+      // Call AI to parse resume with actual text
       try {
         const { data, error } = await supabase.functions.invoke('parse-resume', {
-          body: { fileName: file.name, resumeId: newResume.id }
+          body: { 
+            fileName: file.name, 
+            resumeId: newResume.id,
+            resumeText: resumeText
+          }
         });
 
         if (error) throw error;
 
-        if (data?.experiences) {
+        if (data?.experiences && data.experiences.length > 0) {
+          // Clear any default sample experiences before adding parsed ones
           data.experiences.forEach((exp: any) => {
             addExperience({
               id: Date.now().toString() + Math.random(),
@@ -90,7 +136,10 @@ export function CareerTab() {
             });
           });
           updateResume(newResume.id, { parseStatus: 'success' });
-          toast.success('이력서 분석이 완료되었습니다!');
+          toast.success(`이력서 분석 완료! ${data.experiences.length}개의 경험을 추출했습니다.`);
+        } else {
+          updateResume(newResume.id, { parseStatus: 'fail', parseError: '경험을 추출할 수 없습니다' });
+          toast.error('이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.');
         }
       } catch (parseError) {
         console.error('Resume parse error:', parseError);
@@ -191,6 +240,9 @@ export function CareerTab() {
                         </Button>
                       </div>
                     </div>
+                    {resume.parseError && (
+                      <p className="text-xs text-warning mt-2">{resume.parseError}</p>
+                    )}
                   </div>
                 ))}
 
@@ -226,6 +278,12 @@ export function CareerTab() {
                     onDelete={() => removeExperience(exp.id)}
                   />
                 ))}
+
+                {workExperiences.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    이력서를 업로드하거나 직접 추가해주세요
+                  </p>
+                )}
 
                 <Button 
                   variant="ghost" 
@@ -263,6 +321,12 @@ export function CareerTab() {
                     onDelete={() => removeExperience(exp.id)}
                   />
                 ))}
+
+                {projectExperiences.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    이력서를 업로드하거나 직접 추가해주세요
+                  </p>
+                )}
 
                 <Button 
                   variant="ghost" 
@@ -325,6 +389,9 @@ function ExperienceCard({ experience, onEdit, onDelete }: { experience: Experien
           </Button>
         </div>
       </div>
+      {experience.description && (
+        <p className="text-xs text-muted-foreground mb-2">{experience.description}</p>
+      )}
       <ul className="space-y-1 text-xs text-muted-foreground">
         {experience.bullets.slice(0, 3).map((bullet, i) => (
           <li key={i} className="flex gap-2">
@@ -332,6 +399,9 @@ function ExperienceCard({ experience, onEdit, onDelete }: { experience: Experien
             <span>{bullet}</span>
           </li>
         ))}
+        {experience.bullets.length > 3 && (
+          <li className="text-primary text-xs">+{experience.bullets.length - 3}개 더...</li>
+        )}
       </ul>
     </div>
   );

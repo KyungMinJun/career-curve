@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
-import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, KeyCompetency, CompanyCriteriaScore } from '@/types/job';
+import { useState } from 'react';
+import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, KeyCompetency, CompanyCriteriaScore } from '@/types/job';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useJobStore } from '@/stores/jobStore';
 import {
@@ -36,6 +35,8 @@ import {
   Calendar,
   Globe,
   FileText,
+  Quote,
+  AlertCircle,
 } from 'lucide-react';
 import { ResumeBuilderDialog } from './ResumeBuilderDialog';
 
@@ -132,6 +133,12 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
       ))}
     </div>
   );
+
+  const getDisplayValue = (value: string | boolean | null | undefined, defaultText: string = '확인 불가') => {
+    if (value === undefined || value === null || value === '') return defaultText;
+    if (typeof value === 'boolean') return value ? '가능' : '불가';
+    return value;
+  };
 
   return (
     <>
@@ -236,15 +243,73 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
                 </div>
               )}
 
-              {/* Auto-extracted Fields */}
+              {keyCompetencyScores.length === 0 && (
+                <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-warning">핵심 역량 분석 필요</p>
+                    <p className="text-xs text-muted-foreground">새 공고를 등록하면 AI가 자동으로 5가지 핵심 역량을 추출합니다.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Auto-extracted Fields with Evidence */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-foreground">공고 정보</h3>
                 <div className="grid gap-3">
-                  <InfoRow icon={<Briefcase className="w-4 h-4" />} label="포지션" value={job.position} field="position" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('position', v)} />
-                  <InfoRow icon={<Calendar className="w-4 h-4" />} label="최소 경력" value={job.minExperience} field="minExperience" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('minExperience', v)} />
-                  <InfoRow icon={<Building2 className="w-4 h-4" />} label="근무 형태" value={job.workType} field="workType" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('workType', v)} />
-                  <InfoRow icon={<MapPin className="w-4 h-4" />} label="위치" value={job.location} field="location" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('location', v)} />
-                  <InfoRow icon={<Globe className="w-4 h-4" />} label="비자 지원" value={job.visaSponsorship === undefined ? '미확인' : job.visaSponsorship ? '가능' : '불가'} field="visaSponsorship" editingField={editingField} setEditingField={setEditingField} onSave={(v) => handleFieldUpdate('visaSponsorship', v === '가능')} isUnconfirmed={job.visaSponsorship === undefined} />
+                  <InfoRowWithEvidence 
+                    icon={<Briefcase className="w-4 h-4" />} 
+                    label="포지션" 
+                    value={job.position} 
+                    field="position" 
+                    editingField={editingField} 
+                    setEditingField={setEditingField} 
+                    onSave={(v) => handleFieldUpdate('position', v)} 
+                  />
+                  <InfoRowWithEvidence 
+                    icon={<Calendar className="w-4 h-4" />} 
+                    label="최소 경력" 
+                    value={getDisplayValue(job.minExperience)} 
+                    evidence={job.minExperienceEvidence}
+                    field="minExperience" 
+                    editingField={editingField} 
+                    setEditingField={setEditingField} 
+                    onSave={(v) => handleFieldUpdate('minExperience', v)} 
+                    isUnconfirmed={!job.minExperience}
+                  />
+                  <InfoRowWithEvidence 
+                    icon={<Building2 className="w-4 h-4" />} 
+                    label="근무 형태" 
+                    value={getDisplayValue(job.workType)} 
+                    evidence={job.workTypeEvidence}
+                    field="workType" 
+                    editingField={editingField} 
+                    setEditingField={setEditingField} 
+                    onSave={(v) => handleFieldUpdate('workType', v)} 
+                    isUnconfirmed={!job.workType}
+                  />
+                  <InfoRowWithEvidence 
+                    icon={<MapPin className="w-4 h-4" />} 
+                    label="위치" 
+                    value={getDisplayValue(job.location)} 
+                    evidence={job.locationEvidence}
+                    field="location" 
+                    editingField={editingField} 
+                    setEditingField={setEditingField} 
+                    onSave={(v) => handleFieldUpdate('location', v)} 
+                    isUnconfirmed={!job.location}
+                  />
+                  <InfoRowWithEvidence 
+                    icon={<Globe className="w-4 h-4" />} 
+                    label="비자 지원" 
+                    value={job.visaSponsorship === undefined || job.visaSponsorship === null ? '확인 불가' : job.visaSponsorship ? '가능' : '불가'} 
+                    evidence={job.visaSponsorshipEvidence}
+                    field="visaSponsorship" 
+                    editingField={editingField} 
+                    setEditingField={setEditingField} 
+                    onSave={(v) => handleFieldUpdate('visaSponsorship', v === '가능')} 
+                    isUnconfirmed={job.visaSponsorship === undefined || job.visaSponsorship === null}
+                  />
                 </div>
               </div>
 
@@ -295,10 +360,11 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
   );
 }
 
-interface InfoRowProps {
+interface InfoRowWithEvidenceProps {
   icon: React.ReactNode;
   label: string;
   value?: string;
+  evidence?: string;
   field: string;
   editingField: string | null;
   setEditingField: (field: string | null) => void;
@@ -306,7 +372,7 @@ interface InfoRowProps {
   isUnconfirmed?: boolean;
 }
 
-function InfoRow({ icon, label, value, field, editingField, setEditingField, onSave, isUnconfirmed }: InfoRowProps) {
+function InfoRowWithEvidence({ icon, label, value, evidence, field, editingField, setEditingField, onSave, isUnconfirmed }: InfoRowWithEvidenceProps) {
   const [localValue, setLocalValue] = useState(value || '');
   const isEditing = editingField === field;
 
@@ -320,12 +386,23 @@ function InfoRow({ icon, label, value, field, editingField, setEditingField, onS
   }
 
   return (
-    <div className="flex items-center gap-3 bg-secondary/30 rounded-lg p-3 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => setEditingField(field)}>
-      <div className="text-muted-foreground">{icon}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={cn('text-sm font-medium truncate', isUnconfirmed ? 'text-warning' : 'text-foreground')}>{value || '미확인'}</p>
+    <div 
+      className="bg-secondary/30 rounded-lg p-3 cursor-pointer hover:bg-secondary/50 transition-colors" 
+      onClick={() => setEditingField(field)}
+    >
+      <div className="flex items-center gap-3">
+        <div className="text-muted-foreground">{icon}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className={cn('text-sm font-medium truncate', isUnconfirmed ? 'text-warning' : 'text-foreground')}>{value || '확인 불가'}</p>
+        </div>
       </div>
+      {evidence && (
+        <div className="mt-2 flex items-start gap-2 text-xs text-muted-foreground bg-background/50 rounded p-2">
+          <Quote className="w-3 h-3 shrink-0 mt-0.5" />
+          <span className="italic">{evidence}</span>
+        </div>
+      )}
     </div>
   );
 }

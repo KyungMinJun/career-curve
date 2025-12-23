@@ -23,7 +23,7 @@ const STATUS_ORDER: JobStatus[] = [
 
 export function BoardTab() {
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
-  const { jobPostings, userName, goalStartDate } = useJobStore();
+  const { jobPostings, userName, goalStartDate, updateJobPosting } = useJobStore();
 
   const interviewCount = jobPostings.filter((j) => j.status === 'interview').length;
   const totalCount = jobPostings.length;
@@ -36,12 +36,16 @@ export function BoardTab() {
     return acc;
   }, {} as Record<JobStatus, typeof jobPostings>);
 
+  const handleDropOnColumn = (jobId: string, newStatus: JobStatus) => {
+    updateJobPosting(jobId, { status: newStatus });
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-foreground">이직 보드</h1>
+          <h1 className="text-xl font-bold text-foreground">보드</h1>
           
           {/* View Toggle */}
           <div className="flex bg-secondary rounded-lg p-0.5">
@@ -90,7 +94,7 @@ export function BoardTab() {
       {/* Content */}
       <div className="flex-1 overflow-hidden pb-20">
         {viewMode === 'kanban' ? (
-          <KanbanView groupedByStatus={groupedByStatus} />
+          <KanbanView groupedByStatus={groupedByStatus} onDropOnColumn={handleDropOnColumn} />
         ) : (
           <TableView jobs={jobPostings} />
         )}
@@ -100,18 +104,62 @@ export function BoardTab() {
 }
 
 function KanbanView({ 
-  groupedByStatus 
+  groupedByStatus,
+  onDropOnColumn,
 }: { 
-  groupedByStatus: Record<JobStatus, JobPosting[]> 
+  groupedByStatus: Record<JobStatus, JobPosting[]>;
+  onDropOnColumn: (jobId: string, newStatus: JobStatus) => void;
 }) {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<JobStatus | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, jobId: string) => {
+    setDraggedJobId(jobId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', jobId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedJobId(null);
+    setDragOverColumn(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, status: JobStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverColumn(status);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, status: JobStatus) => {
+    e.preventDefault();
+    const jobId = e.dataTransfer.getData('text/plain');
+    if (jobId) {
+      onDropOnColumn(jobId, status);
+    }
+    setDragOverColumn(null);
+    setDraggedJobId(null);
+  };
 
   return (
     <>
       <div className="h-full overflow-x-auto scrollbar-hide">
         <div className="flex gap-4 px-4 h-full min-w-max pb-4">
           {STATUS_ORDER.filter((status) => !status.startsWith('rejected')).map((status) => (
-            <div key={status} className="w-72 flex-shrink-0">
+            <div 
+              key={status} 
+              className={cn(
+                "w-72 flex-shrink-0 rounded-lg transition-colors",
+                dragOverColumn === status && "bg-primary/10"
+              )}
+              onDragOver={(e) => handleDragOver(e, status)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, status)}
+            >
               {/* Column Header */}
               <div className="flex items-center gap-2 mb-3 px-1">
                 <span className={cn(
@@ -133,15 +181,28 @@ function KanbanView({
               {/* Cards */}
               <div className="space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] scrollbar-hide">
                 {groupedByStatus[status]?.map((job) => (
-                  <JobCard 
-                    key={job.id} 
-                    job={job} 
-                    onClick={() => setSelectedJob(job)}
-                  />
+                  <div
+                    key={job.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, job.id)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "cursor-grab active:cursor-grabbing",
+                      draggedJobId === job.id && "opacity-50"
+                    )}
+                  >
+                    <JobCard 
+                      job={job} 
+                      onClick={() => setSelectedJob(job)}
+                    />
+                  </div>
                 ))}
                 {groupedByStatus[status]?.length === 0 && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    아직 없음
+                  <div className={cn(
+                    "text-center py-8 text-sm text-muted-foreground rounded-lg border-2 border-dashed",
+                    dragOverColumn === status ? "border-primary" : "border-transparent"
+                  )}>
+                    {dragOverColumn === status ? "여기에 놓기" : "아직 없음"}
                   </div>
                 )}
               </div>
@@ -161,5 +222,3 @@ function KanbanView({
     </>
   );
 }
-
-// TableView is now imported from @/components/board/TableView

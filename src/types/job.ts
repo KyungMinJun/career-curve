@@ -23,6 +23,12 @@ export interface CompanyCriteriaScore {
   score?: number; // 1-5
 }
 
+// Job info field with evidence
+export interface JobInfoField {
+  value?: string;
+  evidence?: string; // Source sentence from job posting
+}
+
 // Job posting data structure
 export interface JobPosting {
   id: string;
@@ -32,9 +38,13 @@ export interface JobPosting {
   priority: number; // 1-5 (1 is best)
   position: string;
   minExperience?: string;
+  minExperienceEvidence?: string;
   workType?: string;
+  workTypeEvidence?: string;
   location?: string;
-  visaSponsorship?: boolean;
+  locationEvidence?: string;
+  visaSponsorship?: boolean | null;
+  visaSponsorshipEvidence?: string;
   summary?: string;
   companyScore?: number; // 1-5 average
   fitScore?: number; // 1-5 average
