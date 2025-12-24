@@ -2,6 +2,54 @@
 let pdfjsLib: any = null;
 let pdfjsPromise: Promise<any> | null = null;
 
+const CDN_CANDIDATES = [
+  // jsDelivr tends to be more reachable in KR networks than cdnjs
+  {
+    base: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/',
+    pdf: 'build/pdf.min.js',
+    worker: 'build/pdf.worker.min.js',
+    cmaps: 'cmaps/',
+    standardFonts: 'standard_fonts/',
+  },
+  {
+    base: 'https://unpkg.com/pdfjs-dist@3.11.174/',
+    pdf: 'build/pdf.min.js',
+    worker: 'build/pdf.worker.min.js',
+    cmaps: 'cmaps/',
+    standardFonts: 'standard_fonts/',
+  },
+  {
+    base: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/',
+    pdf: 'pdf.min.js',
+    worker: 'pdf.worker.min.js',
+    cmaps: 'cmaps/',
+    standardFonts: 'standard_fonts/',
+  },
+] as const;
+
+type PdfCdn = (typeof CDN_CANDIDATES)[number];
+
+async function preflight(cdn: PdfCdn) {
+  // Best-effort connectivity check to catch blocked CDNs early.
+  // We use a tiny request (pdf.min.js) and rely on fetch errors.
+  const url = cdn.base + cdn.pdf;
+  const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+  if (!resp.ok) throw new Error(`PDF CDN not reachable: ${resp.status}`);
+}
+
+async function pickWorkingCdn(): Promise<PdfCdn> {
+  let lastErr: unknown = null;
+  for (const cdn of CDN_CANDIDATES) {
+    try {
+      await preflight(cdn);
+      return cdn;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('No reachable PDF CDN');
+}
+
 async function loadPdfJs() {
   if (pdfjsLib) return pdfjsLib;
   if (pdfjsPromise) return pdfjsPromise;
@@ -10,15 +58,15 @@ async function loadPdfJs() {
     // 이미 로드된 경우
     const existing = (window as any).pdfjsLib;
     if (existing) {
-      existing.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       pdfjsLib = existing;
       return existing;
     }
 
+    const cdn = await pickWorkingCdn();
+
     // Load PDF.js from CDN
     const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.src = cdn.base + cdn.pdf;
 
     await new Promise<void>((resolve, reject) => {
       script.onload = () => resolve();
@@ -31,8 +79,10 @@ async function loadPdfJs() {
 
     // NOTE: cross-origin worker 문제가 환경에 따라 발생할 수 있어,
     // 실제 parsing은 disableWorker 옵션으로 worker 없이 수행합니다.
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjs.GlobalWorkerOptions.workerSrc = cdn.base + cdn.worker;
+
+    // Attach chosen CDN paths for later (fonts/cmaps)
+    (pdfjs as any).__lovableCdn = cdn;
 
     pdfjsLib = pdfjs;
     return pdfjs;
@@ -41,17 +91,36 @@ async function loadPdfJs() {
   return pdfjsPromise;
 }
 
+function getPdfResourceUrls(pdfjs: any) {
+  const cdn: PdfCdn | undefined = pdfjs?.__lovableCdn;
+  // Fallback to cdnjs if not present
+  const chosen = cdn ?? CDN_CANDIDATES[CDN_CANDIDATES.length - 1];
+  return {
+    cMapUrl: chosen.base + chosen.cmaps,
+    standardFontDataUrl: chosen.base + chosen.standardFonts,
+  };
+}
+
 export async function extractTextFromPdf(file: File): Promise<string> {
   const pdfjs = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
+
+  const { cMapUrl, standardFontDataUrl } = getPdfResourceUrls(pdfjs);
 
   // PDF 폰트(CMap) 로드 오류로 텍스트 추출이 0이 되는 케이스를 방지
   const commonOptions = {
     data: arrayBuffer,
     disableWorker: true,
-    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+
+    // IMPORTANT: avoid hard dependency on a single CDN
+    cMapUrl,
     cMapPacked: true,
-    standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
+    standardFontDataUrl,
+
+    // These options reduce font-fetch related failures and improve render fidelity for OCR.
+    // (pdf.js will still fetch when needed, but will be more tolerant)
+    useSystemFonts: true,
+    disableFontFace: true,
   };
 
   const pdf = await pdfjs.getDocument(commonOptions).promise;
@@ -72,18 +141,22 @@ export async function extractTextFromPdf(file: File): Promise<string> {
 
 export async function renderPdfToImageDataUrls(
   file: File,
-  options?: { maxPages?: number; scale?: number; quality?: number }
+  options?: { maxPages?: number; scale?: number; quality?: number; format?: 'jpeg' | 'png' }
 ): Promise<string[]> {
-  const { maxPages = 2, scale = 1.6, quality = 0.85 } = options ?? {};
+  const { maxPages = 2, scale = 1.6, quality = 0.85, format = 'jpeg' } = options ?? {};
   const pdfjs = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
+
+  const { cMapUrl, standardFontDataUrl } = getPdfResourceUrls(pdfjs);
 
   const commonOptions = {
     data: arrayBuffer,
     disableWorker: true,
-    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+    cMapUrl,
     cMapPacked: true,
-    standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
+    standardFontDataUrl,
+    useSystemFonts: true,
+    disableFontFace: true,
   };
 
   const pdf = await pdfjs.getDocument(commonOptions).promise;
@@ -103,7 +176,12 @@ export async function renderPdfToImageDataUrls(
     canvas.height = Math.ceil(viewport.height);
 
     await page.render({ canvasContext: context, viewport }).promise;
-    urls.push(canvas.toDataURL('image/jpeg', quality));
+
+    if (format === 'png') {
+      urls.push(canvas.toDataURL('image/png'));
+    } else {
+      urls.push(canvas.toDataURL('image/jpeg', quality));
+    }
 
     // 메모리 해제 힌트
     canvas.width = 0;
@@ -112,5 +190,3 @@ export async function renderPdfToImageDataUrls(
 
   return urls;
 }
-
-

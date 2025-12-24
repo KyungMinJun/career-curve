@@ -2,11 +2,12 @@ import { User, ChevronRight, FileText, Shield } from 'lucide-react';
 import { useJobStore } from '@/stores/jobStore';
 
 export function SettingsTab() {
-  const { jobPostings, userName, goalStartDate } = useJobStore();
+  const { jobPostings, userName, currentGoal } = useJobStore();
   const interviewCount = jobPostings.filter(j => j.status === 'interview').length;
   const appliedCount = jobPostings.filter(j => j.status !== 'reviewing').length;
-  const daysSinceGoal = goalStartDate 
-    ? Math.floor((Date.now() - goalStartDate.getTime()) / (1000 * 60 * 60 * 24))
+  const start = currentGoal?.startDate ? new Date(currentGoal.startDate) : null;
+  const daysSinceGoal = start 
+    ? Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
   return (

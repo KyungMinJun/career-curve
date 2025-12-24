@@ -42,7 +42,7 @@ export function BoardTab() {
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [filterOption, setFilterOption] = useState<FilterOption>('all');
-  const { jobPostings, userName, goalStartDate, updateJobPosting } = useJobStore();
+  const { jobPostings, userName, currentGoal, updateJobPosting } = useJobStore();
 
   // Sort and filter jobs
   const sortedJobs = useMemo(() => {
@@ -66,8 +66,9 @@ export function BoardTab() {
 
   const interviewCount = jobPostings.filter((j) => j.status === 'interview').length;
   const totalCount = jobPostings.length;
-  const daysSinceGoal = goalStartDate 
-    ? Math.floor((Date.now() - goalStartDate.getTime()) / (1000 * 60 * 60 * 24))
+  const goalStart = currentGoal?.startDate ? new Date(currentGoal.startDate) : null;
+  const daysSinceGoal = goalStart 
+    ? Math.floor((Date.now() - goalStart.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
   // Group sorted jobs by status for kanban

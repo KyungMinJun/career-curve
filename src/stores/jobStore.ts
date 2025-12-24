@@ -35,8 +35,6 @@ interface JobStore {
   // User info
   userName: string;
   setUserName: (name: string) => void;
-  goalStartDate: Date | null;
-  setGoalStartDate: (date: Date) => void;
 }
 
 // Simple example posting
@@ -135,6 +133,8 @@ export const useJobStore = create<JobStore>()(
           { name: '워라밸', weight: 3 },
           { name: '회사 문화', weight: 4 },
         ],
+        startDate: new Date(),
+        endDate: undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -148,8 +148,6 @@ export const useJobStore = create<JobStore>()(
       // User info
       userName: '사용자',
       setUserName: (name) => set({ userName: name }),
-      goalStartDate: new Date(),
-      setGoalStartDate: (date) => set({ goalStartDate: date }),
     }),
     {
       name: 'jobflow-storage',
@@ -161,12 +159,10 @@ export const useJobStore = create<JobStore>()(
         currentGoal: state.currentGoal,
         goalHistory: state.goalHistory,
         userName: state.userName,
-        goalStartDate: state.goalStartDate,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           // Rehydrate dates from strings
-          state.goalStartDate = state.goalStartDate ? new Date(state.goalStartDate) : null;
           state.jobPostings = state.jobPostings.map((p) => ({
             ...p,
             createdAt: new Date(p.createdAt),
@@ -188,6 +184,8 @@ export const useJobStore = create<JobStore>()(
           if (state.currentGoal) {
             state.currentGoal.createdAt = new Date(state.currentGoal.createdAt);
             state.currentGoal.updatedAt = new Date(state.currentGoal.updatedAt);
+            state.currentGoal.startDate = new Date((state.currentGoal as any).startDate ?? new Date());
+            state.currentGoal.endDate = (state.currentGoal as any).endDate ? new Date((state.currentGoal as any).endDate) : undefined;
           }
           state.goalHistory = state.goalHistory.map((h) => ({
             ...h,
@@ -196,6 +194,8 @@ export const useJobStore = create<JobStore>()(
               ...h.goal,
               createdAt: new Date(h.goal.createdAt),
               updatedAt: new Date(h.goal.updatedAt),
+              startDate: new Date((h.goal as any).startDate ?? new Date()),
+              endDate: (h.goal as any).endDate ? new Date((h.goal as any).endDate) : undefined,
             },
           }));
         }

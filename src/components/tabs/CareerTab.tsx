@@ -93,9 +93,10 @@ export function CareerTab() {
       let pageImages: string[] | undefined;
       if (!resumeText || resumeText.trim().length < 80) {
         try {
-          // 안정적인 OCR을 위해: (1) 텍스트가 정말 없을 때만 이미지 렌더링
-          // (2) 너무 작은 이미지(글자 깨짐)도, 너무 큰 이미지(전송 실패)도 피하는 중간값
-          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 6, scale: 1.9, quality: 0.72 });
+          // OCR 품질/안정성 최적화:
+          // - PNG: 글자 윤곽 보존(underscores만 나오던 케이스 방지)
+          // - scale: 폰트 렌더링이 안정화되면 글자가 선명하게 나오도록 약간 상향
+          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 6, scale: 2.2, format: 'png', quality: 0.72 });
           console.log('Rendered pages for OCR:', pageImages.length);
           console.log('OCR page image sizes(chars):', pageImages.map((s) => s.length));
         } catch (err) {

@@ -148,15 +148,23 @@ serve(async (req) => {
       }
 
       ocrText = perPageTexts.join('\n\n---\n\n');
+
+      // (진단) OCR이 실패하면 특정 패턴(밑줄/구분선 등)만 나오는 경우가 있음
+      // 이 경우는 "이미지에 실제 텍스트가 렌더되지 않았다"(폰트 리소스 로드 실패 등) 가능성이 높음.
+      const looksLikeOnlyLines =
+        !!ocrText.trim() &&
+        /^[_\-\s\n]+$/.test(ocrText.replace(/\r/g, ''));
+      if (looksLikeOnlyLines) {
+        console.log('OCR looks like only lines/underscores; treating as empty OCR');
+        ocrText = '';
+      }
+
       console.log('OCR extracted text length:', ocrText.length);
     }
 
     // 최종 텍스트 결합 (PDF 텍스트 + OCR)
-    const combinedText = [
-      hasText ? resumeText : '',
-      ocrText
-    ].filter(t => t.trim()).join('\n\n---\n\n');
-    
+    const combinedText = [hasText ? resumeText : '', ocrText].filter((t) => t.trim()).join('\n\n---\n\n');
+
     console.log('Combined text length:', combinedText.length);
 
     if (combinedText.trim().length < 30) {

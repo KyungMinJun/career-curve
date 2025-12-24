@@ -94,6 +94,8 @@ export interface CareerGoal {
   careerPath?: string;
   searchPeriod?: string; // e.g., "3개월", "6개월"
   companyEvalCriteria: { name: string; weight: number }[];
+  startDate: Date; // 목표 시작일
+  endDate?: Date; // 목표 종료일 (입력 시 자동으로 이전 기록으로 이동)
   createdAt: Date;
   updatedAt: Date;
 }
