@@ -155,6 +155,7 @@ export const useJobStore = create<JobStore>()(
       name: 'jobflow-storage',
       partialize: (state) => ({
         jobPostings: state.jobPostings,
+        messages: state.messages,
         experiences: state.experiences,
         resumes: state.resumes,
         currentGoal: state.currentGoal,
@@ -171,6 +172,10 @@ export const useJobStore = create<JobStore>()(
             createdAt: new Date(p.createdAt),
             updatedAt: new Date(p.updatedAt),
           }));
+          state.messages = (state.messages || []).map((m) => ({
+            ...m,
+            createdAt: new Date(m.createdAt),
+          }));
           state.experiences = state.experiences.map((e) => ({
             ...e,
             createdAt: new Date(e.createdAt),
@@ -178,6 +183,7 @@ export const useJobStore = create<JobStore>()(
           state.resumes = state.resumes.map((r) => ({
             ...r,
             uploadedAt: new Date(r.uploadedAt),
+            parsedAt: r.parsedAt ? new Date(r.parsedAt) : undefined,
           }));
           if (state.currentGoal) {
             state.currentGoal.createdAt = new Date(state.currentGoal.createdAt);

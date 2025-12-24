@@ -80,10 +80,11 @@ serve(async (req) => {
 
     if (hasImages && (!hasText || resumeText.trim().length < 100)) {
       console.log('Starting OCR with', pageImages.length, 'images');
+      console.log('OCR image[0] size(chars):', typeof pageImages?.[0] === 'string' ? pageImages[0].length : 0);
+      console.log('OCR image[1] size(chars):', typeof pageImages?.[1] === 'string' ? pageImages[1].length : 0);
 
-      // NOTE: 일부 모델/게이트웨이 조합에서 tool calling + vision이 불안정할 수 있어
-      // OCR 단계는 "그냥 텍스트"로 반환받아 안정적으로 처리합니다.
-      ocrModel = 'google/gemini-2.5-flash';
+      // OCR 모델은 이미지 입력 안정성이 높은 모델로 사용
+      ocrModel = 'openai/gpt-5-mini';
 
       const ocrUserParts: any[] = [
         {
