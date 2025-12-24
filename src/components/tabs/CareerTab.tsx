@@ -93,8 +93,8 @@ export function CareerTab() {
       let pageImages: string[] | undefined;
       if (!resumeText || resumeText.trim().length < 80) {
         try {
-          // OCR 정확도 ↑: 해상도(scale) 올리고(최대 3페이지), 용량은 JPEG 품질로 제어
-          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 3, scale: 3.0, quality: 0.7 });
+          // OCR 정확도/커버리지 ↑: 더 많은 페이지를 렌더링하되, 해상도는 과도한 용량을 피하기 위해 적절히 조절
+          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 6, scale: 2.4, quality: 0.78 });
           console.log('Rendered pages for OCR:', pageImages.length);
         } catch (err) {
           console.error('Failed to render PDF pages:', err);

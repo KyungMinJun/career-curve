@@ -98,7 +98,7 @@ serve(async (req) => {
         },
       ];
 
-      for (const img of pageImages.slice(0, 3)) {
+      for (const img of pageImages.slice(0, 6)) {
         ocrUserParts.push({ type: 'image_url', image_url: { url: img, detail: 'high' } });
       }
 
@@ -128,6 +128,50 @@ serve(async (req) => {
           console.log('OCR text preview:', ocrText.substring(0, 500));
         } else {
           console.log('OCR empty. Raw AI response preview:', JSON.stringify(ocrAiData)?.substring(0, 800));
+        }
+
+        // OCR 텍스트가 너무 짧고 페이지가 더 있으면(다페이지 이력서) 다음 페이지 묶음도 추가로 OCR
+        if (ocrText.trim().length < 500 && pageImages.length > 6) {
+          console.log('OCR seems too short; running second OCR batch for additional pages');
+
+          const moreParts: any[] = [
+            {
+              type: 'text',
+              text:
+                `다음 페이지 이미지들에서 보이는 텍스트를 **그대로** 전사(OCR)해주세요.\n` +
+                `- 추측/요약/해석 금지\n` +
+                `- 결과는 OCR 텍스트만 출력`,
+            },
+          ];
+
+          for (const img of pageImages.slice(6, 12)) {
+            moreParts.push({ type: 'image_url', image_url: { url: img, detail: 'high' } });
+          }
+
+          const morePayload: Record<string, unknown> = {
+            model: ocrModel,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an OCR transcription engine. Output only the exact text visible in the images. Do not add commentary.',
+              },
+              { role: 'user', content: moreParts },
+            ],
+          };
+
+          const moreResult = await callGateway(morePayload);
+          if ('error' in moreResult) {
+            console.error('Second OCR failed:', moreResult.message);
+          } else {
+            const moreData = await (moreResult as Response).json();
+            const moreContent = moreData?.choices?.[0]?.message?.content;
+            const moreText = typeof moreContent === 'string' ? moreContent : '';
+            if (moreText.trim()) {
+              ocrText = [ocrText, moreText].filter(Boolean).join('\n\n---\n\n');
+              console.log('OCR combined length after second batch:', ocrText.length);
+            }
+          }
         }
       }
     }
