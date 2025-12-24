@@ -144,14 +144,27 @@ Always respond in Korean if the resume is in Korean, otherwise match the resume 
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
         experiences = Array.isArray(parsed.experiences) ? parsed.experiences : [];
-        console.log('Extracted experiences:', experiences.length);
       } catch (e) {
         console.error('Failed to parse tool call arguments:', e);
       }
     }
 
+    // 목데이터/환각 최소화: 흔한 플레이스홀더/신호 없는 항목 제거
+    const cleaned = (experiences || []).filter((exp) => {
+      const title = String(exp?.title ?? '').trim();
+      const company = String(exp?.company ?? '').trim();
+      const desc = String(exp?.description ?? '').trim();
+      const bullets = Array.isArray(exp?.bullets) ? exp.bullets.filter((b: any) => String(b).trim()) : [];
+
+      const looksLikeMock = /^(예시|샘플|Sample|Dummy|목데이터)/i.test(title) || /목데이터|샘플|example/i.test(`${title} ${company} ${desc}`);
+      const hasSignal = title.length >= 2 && (desc.length >= 5 || bullets.length >= 1 || company.length >= 2);
+      return !looksLikeMock && hasSignal;
+    });
+
+    console.log('Extracted experiences:', cleaned.length);
+
     return new Response(
-      JSON.stringify({ success: true, experiences }),
+      JSON.stringify({ success: true, experiences: cleaned }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

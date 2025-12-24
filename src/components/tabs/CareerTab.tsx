@@ -114,7 +114,23 @@ export function CareerTab() {
         if (error) throw error;
 
         if (data?.experiences && data.experiences.length > 0) {
-          data.experiences.forEach((exp: any) => {
+          // 이전에 "이력서에서 가져온" 경험은 교체 (목데이터/이전 결과 잔존 방지)
+          experiences
+            .filter((e) => (e.usedInPostings || []).some((t) => t.startsWith('source:resume:')))
+            .forEach((e) => removeExperience(e.id));
+
+          const validExperiences = data.experiences.filter((exp: any) => {
+            const title = String(exp?.title ?? '').trim();
+            const company = String(exp?.company ?? '').trim();
+            const desc = String(exp?.description ?? '').trim();
+            const bullets = Array.isArray(exp?.bullets) ? exp.bullets.filter((b: any) => String(b).trim()) : [];
+
+            const looksLikeMock = /^(예시|샘플|Sample|Dummy|목데이터)/i.test(title) || /목데이터|샘플|example/i.test(`${title} ${company} ${desc}`);
+            const hasSignal = title.length >= 2 && (desc.length >= 5 || bullets.length >= 1 || company.length >= 2);
+            return !looksLikeMock && hasSignal;
+          });
+
+          validExperiences.forEach((exp: any) => {
             addExperience({
               id: Date.now().toString() + Math.random(),
               type: exp.type || 'work',
@@ -122,12 +138,19 @@ export function CareerTab() {
               company: exp.company,
               description: exp.description || '',
               bullets: exp.bullets || [],
-              usedInPostings: [],
+              usedInPostings: [`source:resume:${newResume.id}`],
               createdAt: new Date(),
             });
           });
+
+          if (validExperiences.length === 0) {
+            updateResume(newResume.id, { parseStatus: 'fail', parseError: '이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.' });
+            toast.error('이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.');
+            return;
+          }
+
           updateResume(newResume.id, { parseStatus: 'success' });
-          toast.success(`이력서 분석 완료! ${data.experiences.length}개의 경험을 추출했습니다.`);
+          toast.success(`이력서 분석 완료! ${validExperiences.length}개의 경험을 추출했습니다.`);
         } else {
           updateResume(newResume.id, { parseStatus: 'fail', parseError: '이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.' });
           toast.error('이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.');
