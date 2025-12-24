@@ -45,13 +45,21 @@ export async function extractTextFromPdf(file: File): Promise<string> {
   const pdfjs = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
 
-  // worker 로딩/보안정책 이슈를 피하기 위해 worker 비활성화
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer, disableWorker: true }).promise;
+  // PDF 폰트(CMap) 로드 오류로 텍스트 추출이 0이 되는 케이스를 방지
+  const commonOptions = {
+    data: arrayBuffer,
+    disableWorker: true,
+    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+    cMapPacked: true,
+    standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
+  };
+
+  const pdf = await pdfjs.getDocument(commonOptions).promise;
 
   let fullText = '';
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent({ normalizeWhitespace: true });
+    const textContent = await page.getTextContent({ normalizeWhitespace: true, disableCombineTextItems: false });
     const pageText = (textContent.items || [])
       .map((item: any) => (typeof item?.str === 'string' ? item.str : ''))
       .filter(Boolean)
@@ -69,7 +77,16 @@ export async function renderPdfToImageDataUrls(
   const { maxPages = 2, scale = 1.6, quality = 0.85 } = options ?? {};
   const pdfjs = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer, disableWorker: true }).promise;
+
+  const commonOptions = {
+    data: arrayBuffer,
+    disableWorker: true,
+    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+    cMapPacked: true,
+    standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
+  };
+
+  const pdf = await pdfjs.getDocument(commonOptions).promise;
 
   const pages = Math.min(pdf.numPages, maxPages);
   const urls: string[] = [];
@@ -95,4 +112,5 @@ export async function renderPdfToImageDataUrls(
 
   return urls;
 }
+
 

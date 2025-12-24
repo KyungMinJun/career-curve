@@ -78,6 +78,11 @@ export interface Resume {
   uploadedAt: Date;
   parseStatus: 'pending' | 'success' | 'fail';
   parseError?: string;
+
+  // 파싱 파이프라인 진단/저장용 (4단계 검증을 위해)
+  extractedText?: string; // PDF 텍스트 추출 결과(가능하면)
+  ocrText?: string; // OCR 전사 결과(이미지 기반일 때)
+  parsedAt?: Date;
 }
 
 // Goal settings

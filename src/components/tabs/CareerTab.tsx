@@ -55,6 +55,15 @@ export function CareerTab() {
 
     setIsUploading(true);
 
+    // 업로드 시점에 화면에 남아있는 "예시/목데이터" 경험은 먼저 제거 (실제 데이터만 남기기)
+    const mockLike = (e: any) => {
+      const title = String(e?.title ?? '').trim();
+      const company = String(e?.company ?? '').trim();
+      const desc = String(e?.description ?? '').trim();
+      return /^(예시|샘플|Sample|Dummy|목데이터)/i.test(title) || /목데이터|샘플|example/i.test(`${title} ${company} ${desc}`);
+    };
+    experiences.filter(mockLike).forEach((e) => removeExperience(e.id));
+
     try {
       const fileUrl = URL.createObjectURL(file);
 
@@ -82,26 +91,31 @@ export function CareerTab() {
       let pageImages: string[] | undefined;
       if (!resumeText || resumeText.trim().length < 80) {
         try {
-          // OCR 정확도 ↑: 해상도(scale) 올리고, 용량 ↓: JPEG 품질 낮춤
-          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 2, scale: 2.4, quality: 0.72 });
+          // OCR 정확도 ↑: 해상도(scale) 올리고(최대 3페이지), 용량은 JPEG 품질로 제어
+          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 3, scale: 3.0, quality: 0.7 });
           console.log('Rendered pages for OCR:', pageImages.length);
         } catch (err) {
           console.error('Failed to render PDF pages:', err);
         }
       }
 
-      // 3) 둘 다 실패하면 사용자에게 안내
+      // 3) (진단) 추출된 텍스트를 Resume에 저장
+      updateResume(newResume.id, {
+        extractedText: resumeText?.trim() ? resumeText : undefined,
+      });
+
+      // 4) 둘 다 실패하면 사용자에게 안내
       if ((!resumeText || resumeText.trim().length < 80) && (!pageImages || pageImages.length === 0)) {
         updateResume(newResume.id, {
           parseStatus: 'fail',
-          parseError: 'PDF에서 텍스트를 추출할 수 없습니다. (스캔본/이미지 기반 PDF일 수 있어요) 경험을 직접 추가해주세요.'
+          parseError: 'PDF 텍스트 추출 0자 + OCR 이미지 생성 실패',
         });
-        toast.error('PDF 텍스트 추출 실패. (스캔본이면 OCR도 필요합니다)');
+        toast.error('PDF에서 텍스트를 추출할 수 없습니다. (OCR용 이미지 생성도 실패)');
         setIsUploading(false);
         return;
       }
 
-      // 4) 백엔드 분석 호출 (텍스트 우선, 필요시 이미지로 OCR)
+      // 5) 백엔드 분석 호출 (텍스트 우선, 필요시 이미지로 OCR)
       try {
         const { data, error } = await supabase.functions.invoke('parse-resume', {
           body: {
@@ -109,14 +123,22 @@ export function CareerTab() {
             resumeId: newResume.id,
             resumeText: resumeText,
             pageImages,
-          }
+          },
         });
 
         if (error) throw error;
 
+        // (진단) OCR 텍스트도 저장
+        updateResume(newResume.id, {
+          ocrText: typeof data?.ocrText === 'string' && data.ocrText.trim() ? data.ocrText : undefined,
+          parsedAt: new Date(),
+        });
+
+        const extractedLen = Number(data?.extractedTextLength ?? 0);
+
         if (data?.experiences && data.experiences.length > 0) {
           // 이전에 "이력서에서 가져온" 경험 + 목데이터로 보이는 경험은 교체/정리
-          const mockLike = (e: any) => {
+          const mockLikeLocal = (e: any) => {
             const title = String(e?.title ?? '').trim();
             const company = String(e?.company ?? '').trim();
             const desc = String(e?.description ?? '').trim();
@@ -124,7 +146,7 @@ export function CareerTab() {
           };
 
           experiences
-            .filter((e) => (e.usedInPostings || []).some((t) => t.startsWith('source:resume:')) || mockLike(e))
+            .filter((e) => (e.usedInPostings || []).some((t) => t.startsWith('source:resume:')) || mockLikeLocal(e))
             .forEach((e) => removeExperience(e.id));
 
           const validExperiences = data.experiences.filter((exp: any) => {
@@ -134,7 +156,7 @@ export function CareerTab() {
             const bullets = Array.isArray(exp?.bullets) ? exp.bullets.filter((b: any) => String(b).trim()) : [];
 
             const looksLikeMock = /^(예시|샘플|Sample|Dummy|목데이터)/i.test(title) || /목데이터|샘플|example/i.test(`${title} ${company} ${desc}`);
-            const hasSignal = title.length >= 2 && (desc.length >= 5 || bullets.length >= 1 || company.length >= 2);
+            const hasSignal = title.length >= 2 && (desc.length >= 3 || bullets.length >= 1 || company.length >= 2);
             return !looksLikeMock && hasSignal;
           });
 
@@ -152,21 +174,27 @@ export function CareerTab() {
           });
 
           if (validExperiences.length === 0) {
-            updateResume(newResume.id, { parseStatus: 'fail', parseError: '이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.' });
-            toast.error('이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.');
+            updateResume(newResume.id, {
+              parseStatus: 'fail',
+              parseError: `경험 0개 (추출텍스트 ${extractedLen}자)`,
+            });
+            toast.error('이력서에서 경험을 추출할 수 없습니다. (텍스트는 잡혔지만 구조화에 실패)');
             return;
           }
 
-          updateResume(newResume.id, { parseStatus: 'success' });
+          updateResume(newResume.id, { parseStatus: 'success', parseError: undefined });
           toast.success(`이력서 분석 완료! ${validExperiences.length}개의 경험을 추출했습니다.`);
         } else {
-          updateResume(newResume.id, { parseStatus: 'fail', parseError: '이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.' });
-          toast.error('이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.');
+          updateResume(newResume.id, {
+            parseStatus: 'fail',
+            parseError: `경험 0개 (추출텍스트 ${extractedLen}자)`,
+          });
+          toast.error('이력서에서 경험을 추출할 수 없습니다.');
         }
       } catch (parseError) {
         console.error('Resume parse error:', parseError);
         updateResume(newResume.id, { parseStatus: 'fail', parseError: '분석 실패' });
-        toast.error('이력서 분석에 실패했습니다. 경험을 직접 추가해주세요.');
+        toast.error('이력서 분석에 실패했습니다.');
       }
     } catch (error) {
       toast.error('업로드 실패. 다시 시도해주세요.');
