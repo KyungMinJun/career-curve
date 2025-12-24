@@ -21,7 +21,6 @@ serve(async (req) => {
     const hasText = typeof resumeText === 'string' && resumeText.trim().length > 0;
     const hasImages = Array.isArray(pageImages) && pageImages.length > 0;
 
-    // 텍스트도 이미지도 없으면 파싱 불가
     if (!hasText && !hasImages) {
       console.log('No resume text or images provided');
       return new Response(
@@ -48,24 +47,13 @@ serve(async (req) => {
         const t = await resp.text();
         console.error('AI gateway error:', resp.status, t);
 
-        // Lovable AI 과금/레이트리밋 에러는 그대로 전달
         if (resp.status === 429) {
-          return new Response(JSON.stringify({ success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }), {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return { error: true, status: 429, message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' };
         }
         if (resp.status === 402) {
-          return new Response(JSON.stringify({ success: false, error: 'AI 사용량이 부족합니다. 워크스페이스 크레딧을 확인해주세요.' }), {
-            status: 402,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return { error: true, status: 402, message: 'AI 사용량이 부족합니다. 워크스페이스 크레딧을 확인해주세요.' };
         }
-
-        return new Response(JSON.stringify({ success: false, error: 'AI 분석 실패' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return { error: true, status: 500, message: 'AI 분석 실패' };
       }
 
       return resp;
@@ -86,46 +74,46 @@ serve(async (req) => {
       return null;
     };
 
-    // (A) OCR 전사 단계: 이미지가 있으면 먼저 "보이는 텍스트"를 그대로 전사
+    // (A) OCR 단계: 이미지가 있고 텍스트가 부족하면 OCR 수행
     let ocrText = '';
-    if (hasImages) {
-      const ocrSystemPrompt = `You are an OCR engine.
-
-CRITICAL:
-- Transcribe ONLY what is visible in the images.
-- Keep original language.
-- Preserve line breaks as much as possible.
-- If unreadable, return an empty string.
-
-Return via tool call.`;
-
+    if (hasImages && (!hasText || resumeText.trim().length < 100)) {
+      console.log('Starting OCR with', pageImages.length, 'images');
+      
+      // gpt-5-mini로 OCR 수행 (vision 성능 우수)
       const ocrUserParts: any[] = [
         {
           type: 'text',
-          text:
-            '아래 이력서 PDF 페이지 이미지에서 보이는 텍스트를 그대로 전사(OCR)해 주세요. 추측/요약/생성 금지. 읽을 수 없으면 빈 문자열로 반환.',
+          text: `이 이력서 PDF 페이지들의 모든 텍스트를 읽어서 그대로 전사해주세요.
+- 회사명, 직책, 기간, 업무 내용 등 모든 텍스트를 빠짐없이 추출
+- 원본 언어 그대로 유지
+- 줄바꿈 유지
+- 읽을 수 없는 부분은 건너뛰기`,
         },
       ];
+      
       for (const img of pageImages.slice(0, 3)) {
         ocrUserParts.push({ type: 'image_url', image_url: { url: img, detail: 'high' } });
       }
 
       const ocrPayload: Record<string, unknown> = {
-        model: 'openai/gpt-5-mini',
+        model: 'openai/gpt-5',
         messages: [
-          { role: 'system', content: ocrSystemPrompt },
+          { 
+            role: 'system', 
+            content: 'You are an expert OCR system. Extract and transcribe ALL text visible in the resume images accurately. Preserve original language and formatting.'
+          },
           { role: 'user', content: ocrUserParts },
         ],
         tools: [
           {
             type: 'function',
             function: {
-              name: 'extract_ocr_text',
-              description: 'Return OCR-transcribed text from resume images',
+              name: 'return_ocr_text',
+              description: 'Return the OCR-transcribed text from resume images',
               parameters: {
                 type: 'object',
                 properties: {
-                  text: { type: 'string' },
+                  text: { type: 'string', description: 'All text extracted from the resume images' },
                 },
                 required: ['text'],
                 additionalProperties: false,
@@ -133,67 +121,93 @@ Return via tool call.`;
             },
           },
         ],
-        tool_choice: { type: 'function', function: { name: 'extract_ocr_text' } },
-        max_completion_tokens: 2400,
+        tool_choice: { type: 'function', function: { name: 'return_ocr_text' } },
       };
 
-      const ocrResp = await callGateway(ocrPayload);
-      if (ocrResp.status >= 400) {
-        return ocrResp;
-      }
-
-      const ocrAiData = await ocrResp.json();
-
+      const ocrResult = await callGateway(ocrPayload);
       
-      const ocrParsed = readToolArguments(ocrAiData);
-      ocrText = typeof ocrParsed?.text === 'string' ? ocrParsed.text : '';
-      console.log('OCR text length:', ocrText.length);
+      if ('error' in ocrResult) {
+        console.error('OCR failed:', ocrResult.message);
+      } else {
+        const ocrAiData = await (ocrResult as Response).json();
+        const ocrParsed = readToolArguments(ocrAiData);
+        ocrText = typeof ocrParsed?.text === 'string' ? ocrParsed.text : '';
+        console.log('OCR extracted text length:', ocrText.length);
+        
+        // 디버깅: OCR 텍스트 일부 출력
+        if (ocrText.length > 0) {
+          console.log('OCR text preview:', ocrText.substring(0, 500));
+        }
+      }
     }
 
-    // (B) 경험 추출 단계: 텍스트 기반으로 안정적으로 분류/추출
-    const textForExtraction = hasText ? String(resumeText) : ocrText;
-    if (!textForExtraction || textForExtraction.trim().length < 40) {
+    // 최종 텍스트 결합 (PDF 텍스트 + OCR)
+    const combinedText = [
+      hasText ? resumeText : '',
+      ocrText
+    ].filter(t => t.trim()).join('\n\n---\n\n');
+    
+    console.log('Combined text length:', combinedText.length);
+
+    if (combinedText.trim().length < 30) {
       console.log('No usable text after extraction/OCR');
       return new Response(
-        JSON.stringify({ success: true, experiences: [], ocrText: ocrText || '' }),
+        JSON.stringify({ 
+          success: true, 
+          experiences: [], 
+          ocrText: ocrText || '',
+          extractedTextLength: combinedText.length,
+          debugInfo: 'Text too short after OCR'
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const systemPrompt = `You are an expert resume parser.
+    // (B) 경험 추출 - 회사+업무+기간 패턴으로 경력/프로젝트 분류
+    const systemPrompt = `당신은 이력서 분석 전문가입니다.
 
-CRITICAL INSTRUCTIONS:
-1. ONLY extract information that is ACTUALLY in the resume text. Do NOT make up or hallucinate any experiences.
-2. If the provided text is incomplete / unreliable, return an EMPTY experiences array.
-3. Categorize each item as either "work" (employment) or "project" (projects).
-4. Keep original wording for names/titles as much as possible.
+주어진 이력서 텍스트에서 경력(work)과 프로젝트(project)를 추출하세요.
 
-Return a JSON object with:
-- experiences: array of objects with:
-  - type: "work" or "project"
-  - title: actual job title or project name
-  - company: actual company name (if present)
-  - description: short description (may be empty)
-  - bullets: array of achievements/responsibilities (may be empty)
+## 분류 기준
+**경력 (work)**: 
+- 회사명 + 직책/역할 + 근무 기간이 명시된 항목
+- 정규직/계약직 등 고용 형태의 업무 경험
+- 예: "네이버 | 소프트웨어 엔지니어 | 2020.01 - 2023.06"
 
-Always respond in Korean if the resume is in Korean, otherwise match the resume language.`;
+**프로젝트 (project)**:
+- 특정 프로젝트명 + 역할/기술 + 기간이 있는 항목
+- 사이드 프로젝트, 학교 과제, 오픈소스 기여 등
+- 경력에 해당하지 않는 모든 경험
 
-    const extractionModel = 'google/gemini-2.5-flash';
+## 추출 필드
+각 항목에서 다음을 추출:
+- type: "work" 또는 "project"
+- title: 직책명 또는 프로젝트명
+- company: 회사명 또는 조직명 (없으면 빈 문자열)
+- period: 기간 (예: "2020.01 - 2023.06", "2023.03 - 현재")
+- description: 간단한 설명
+- bullets: 주요 성과/업무 내용 배열
+
+## 중요 규칙
+1. 이력서에 실제로 있는 내용만 추출하세요
+2. 없는 내용을 만들어내지 마세요
+3. 기간이 없어도 회사+역할이 있으면 경력으로 분류
+4. 한국어 이력서는 한국어로, 영어 이력서는 영어로 유지`;
 
     const extractionPayload: Record<string, unknown> = {
-      model: extractionModel,
+      model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         {
           role: 'user',
-          content: `Parse this resume text and extract experiences.\n\nRESUME_TEXT:\n${textForExtraction.substring(0, 24000)}`,
+          content: `아래 이력서 텍스트에서 모든 경력과 프로젝트를 추출해주세요.\n\n${combinedText.substring(0, 20000)}`,
         },
       ],
       tools: [
         {
           type: 'function',
           function: {
-            name: 'extract_resume_experiences',
+            name: 'extract_experiences',
             description: 'Extract work experiences and projects from resume',
             parameters: {
               type: 'object',
@@ -206,6 +220,7 @@ Always respond in Korean if the resume is in Korean, otherwise match the resume 
                       type: { type: 'string', enum: ['work', 'project'] },
                       title: { type: 'string' },
                       company: { type: 'string' },
+                      period: { type: 'string' },
                       description: { type: 'string' },
                       bullets: { type: 'array', items: { type: 'string' } },
                     },
@@ -220,16 +235,20 @@ Always respond in Korean if the resume is in Korean, otherwise match the resume 
           },
         },
       ],
-      tool_choice: { type: 'function', function: { name: 'extract_resume_experiences' } },
+      tool_choice: { type: 'function', function: { name: 'extract_experiences' } },
     };
 
-    const extractionRespOrResponse = await callGateway(extractionPayload);
-    if (extractionRespOrResponse instanceof Response && (extractionRespOrResponse as any).status >= 400) {
-      return extractionRespOrResponse;
+    const extractionResult = await callGateway(extractionPayload);
+    
+    if ('error' in extractionResult) {
+      return new Response(
+        JSON.stringify({ success: false, error: extractionResult.message }),
+        { status: extractionResult.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const aiData = await (extractionRespOrResponse as any).json();
-    console.log('AI response received');
+    const aiData = await (extractionResult as Response).json();
+    console.log('Extraction AI response received');
 
     let experiences: any[] = [];
     const parsed = readToolArguments(aiData);
@@ -237,26 +256,37 @@ Always respond in Korean if the resume is in Korean, otherwise match the resume 
       experiences = parsed.experiences;
     }
 
-    // 목데이터/환각 최소화: 흔한 플레이스홀더/신호 없는 항목 제거
-    const cleaned = (experiences || []).filter((exp) => {
+    // 목데이터/환각 필터링
+    const cleaned = experiences.filter((exp) => {
       const title = String(exp?.title ?? '').trim();
       const company = String(exp?.company ?? '').trim();
       const desc = String(exp?.description ?? '').trim();
       const bullets = Array.isArray(exp?.bullets) ? exp.bullets.filter((b: any) => String(b).trim()) : [];
 
-      const looksLikeMock = /^(예시|샘플|Sample|Dummy|목데이터)/i.test(title) || /목데이터|샘플|example/i.test(`${title} ${company} ${desc}`);
-      const hasSignal = title.length >= 2 && (desc.length >= 3 || bullets.length >= 1 || company.length >= 2);
-      return !looksLikeMock && hasSignal;
+      const looksLikeMock = /^(예시|샘플|Sample|Dummy|목데이터|Example)/i.test(title) || 
+                           /목데이터|샘플|example|lorem|ipsum/i.test(`${title} ${company} ${desc}`);
+      const hasContent = title.length >= 2;
+      return !looksLikeMock && hasContent;
     });
 
     console.log('Extracted experiences:', cleaned.length);
+
+    // 로그에 추출된 내용 표시 (디버깅용)
+    cleaned.forEach((exp, i) => {
+      console.log(`Experience ${i + 1}:`, JSON.stringify({
+        type: exp.type,
+        title: exp.title,
+        company: exp.company,
+        period: exp.period,
+      }));
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
         experiences: cleaned,
         ocrText: ocrText || undefined,
-        extractedTextLength: textForExtraction.length,
+        extractedTextLength: combinedText.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

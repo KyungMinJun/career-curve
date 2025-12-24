@@ -64,6 +64,7 @@ export interface Experience {
   type: ExperienceType;
   title: string;
   company?: string;
+  period?: string; // 기간 (예: "2022.01 - 2023.12", "2023.06 - 현재")
   description: string;
   bullets: string[];
   usedInPostings: string[]; // Job posting IDs

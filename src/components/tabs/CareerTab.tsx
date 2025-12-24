@@ -166,6 +166,7 @@ export function CareerTab() {
               type: exp.type || 'work',
               title: exp.title,
               company: exp.company,
+              period: exp.period || undefined,
               description: exp.description || '',
               bullets: exp.bullets || [],
               usedInPostings: [`source:resume:${newResume.id}`],
@@ -428,7 +429,11 @@ function ExperienceCard({ experience, onEdit, onDelete }: { experience: Experien
       <div className="flex items-start justify-between mb-2">
         <div>
           <h3 className="font-semibold text-sm text-foreground">{experience.title}</h3>
-          {experience.company && <p className="text-xs text-muted-foreground">{experience.company}</p>}
+          <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            {experience.company && <span>{experience.company}</span>}
+            {experience.company && experience.period && <span>•</span>}
+            {experience.period && <span>{experience.period}</span>}
+          </div>
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button variant="ghost" size="icon" className="w-7 h-7" onClick={onEdit}>
@@ -470,6 +475,7 @@ function ExperienceDialog({ open, onOpenChange, experience, defaultType, onSave 
     type: experience?.type || defaultType,
     title: experience?.title || '',
     company: experience?.company || '',
+    period: experience?.period || '',
     description: experience?.description || '',
     bullets: experience?.bullets.join('\n') || '',
     usedInPostings: experience?.usedInPostings || [],
@@ -480,6 +486,7 @@ function ExperienceDialog({ open, onOpenChange, experience, defaultType, onSave 
       type: formData.type,
       title: formData.title,
       company: formData.company || undefined,
+      period: formData.period || undefined,
       description: formData.description,
       bullets: formData.bullets.split('\n').filter(b => b.trim()),
       usedInPostings: formData.usedInPostings,
@@ -524,6 +531,16 @@ function ExperienceDialog({ open, onOpenChange, experience, defaultType, onSave 
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
               placeholder="예: 스타트업 ABC"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expPeriod">기간</Label>
+            <Input
+              id="expPeriod"
+              value={formData.period}
+              onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+              placeholder="예: 2022.01 - 2023.12"
             />
           </div>
 
