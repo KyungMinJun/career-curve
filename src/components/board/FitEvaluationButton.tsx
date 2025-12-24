@@ -14,9 +14,17 @@ interface FitEvaluationButtonProps {
 export function FitEvaluationButton({ keyCompetencies, experiences, onEvaluated }: FitEvaluationButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
+  const hasCompetencies = keyCompetencies && keyCompetencies.length > 0;
+  const hasExperiences = experiences && experiences.length > 0;
+  const canEvaluate = hasCompetencies && hasExperiences;
+
   const handleEvaluate = async () => {
-    if (!keyCompetencies.length || !experiences.length) {
-      toast.error('핵심 역량과 등록된 경험이 모두 필요합니다');
+    if (!canEvaluate) {
+      if (!hasExperiences) {
+        toast.error('경력 탭에서 경험을 먼저 등록해주세요');
+      } else if (!hasCompetencies) {
+        toast.error('공고에서 추출된 핵심 역량이 필요합니다');
+      }
       return;
     }
 
@@ -43,20 +51,31 @@ export function FitEvaluationButton({ keyCompetencies, experiences, onEvaluated 
     }
   };
 
+  const disabledReason = !hasExperiences 
+    ? '경력 탭에서 경험을 먼저 등록하세요' 
+    : !hasCompetencies 
+    ? '공고에서 핵심 역량이 추출되어야 합니다' 
+    : '';
+
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="w-full"
-      onClick={handleEvaluate}
-      disabled={isLoading || !experiences.length}
-    >
-      {isLoading ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <Sparkles className="w-4 h-4 mr-2" />
+    <div className="w-full">
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={handleEvaluate}
+        disabled={isLoading || !canEvaluate}
+      >
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Sparkles className="w-4 h-4 mr-2" />
+        )}
+        AI로 내 적합도 평가하기
+      </Button>
+      {!canEvaluate && disabledReason && (
+        <p className="text-xs text-muted-foreground text-center mt-1">{disabledReason}</p>
       )}
-      AI로 내 적합도 평가하기
-    </Button>
+    </div>
   );
 }

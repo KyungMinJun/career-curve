@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, FileText, Upload, Trash2, Edit2, ChevronDown, ChevronUp, File, Loader2, Briefcase, FolderKanban } from 'lucide-react';
+import { Plus, FileText, Upload, Trash2, Edit2, ChevronDown, ChevronUp, File, Loader2, Briefcase, FolderKanban, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -29,9 +29,10 @@ import { toast } from 'sonner';
 import { Experience, Resume, ExperienceType } from '@/types/job';
 import { supabase } from '@/integrations/supabase/client';
 import { extractTextFromPdf, renderPdfToImageDataUrls } from '@/lib/pdfParser';
+import { exportResumeToDocx } from '@/lib/resumeExporter';
 
 export function CareerTab() {
-  const { experiences, resumes, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume } = useJobStore();
+  const { experiences, resumes, userName, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume } = useJobStore();
   const [resumesOpen, setResumesOpen] = useState(true);
   const [workOpen, setWorkOpen] = useState(true);
   const [projectOpen, setProjectOpen] = useState(true);
@@ -39,6 +40,7 @@ export function CareerTab() {
   const [editingExperience, setEditingExperience] = useState<string | null>(null);
   const [newExperienceType, setNewExperienceType] = useState<ExperienceType>('work');
   const [isUploading, setIsUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [logResumeId, setLogResumeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -249,19 +251,46 @@ export function CareerTab() {
                   className="hidden"
                 />
 
-                <Button 
-                  variant="outline" 
-                  className="w-full border-dashed"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4 mr-2" />
-                  )}
-                  이력서 업로드 (PDF)
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 border-dashed"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
+                    업로드 (PDF)
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    disabled={isExporting || experiences.length === 0}
+                    onClick={async () => {
+                      setIsExporting(true);
+                      try {
+                        await exportResumeToDocx({ userName, experiences });
+                        toast.success('이력서가 다운로드되었습니다');
+                      } catch (err) {
+                        console.error('Export error:', err);
+                        toast.error('이력서 추출에 실패했습니다');
+                      } finally {
+                        setIsExporting(false);
+                      }
+                    }}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4 mr-2" />
+                    )}
+                    추출 (DOCX)
+                  </Button>
+                </div>
 
                 {resumes.map((resume) => (
                   <div key={resume.id} className="bg-secondary/30 rounded-lg p-3 group">
@@ -370,7 +399,7 @@ export function CareerTab() {
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
                 <FolderKanban className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">프로젝트</h2>
+                <h2 className="font-semibold text-foreground">Selected Projects</h2>
                 <Badge variant="secondary" className="text-xs">{projectExperiences.length}</Badge>
               </div>
               {projectOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
@@ -535,9 +564,37 @@ function ExperienceDialog({ open, onOpenChange, experience, defaultType, onSave 
     company: experience?.company || '',
     period: experience?.period || '',
     description: experience?.description || '',
-    bullets: experience?.bullets.join('\n') || '',
+    bullets: experience?.bullets?.join('\n') || '',
     usedInPostings: experience?.usedInPostings || [],
   });
+
+  // Reset form data when experience changes (for editing)
+  useState(() => {
+    if (open) {
+      setFormData({
+        type: experience?.type || defaultType,
+        title: experience?.title || '',
+        company: experience?.company || '',
+        period: experience?.period || '',
+        description: experience?.description || '',
+        bullets: experience?.bullets?.join('\n') || '',
+        usedInPostings: experience?.usedInPostings || [],
+      });
+    }
+  });
+
+  // Effect to update form when experience prop changes
+  if (open && experience && formData.title !== experience.title) {
+    setFormData({
+      type: experience.type || defaultType,
+      title: experience.title || '',
+      company: experience.company || '',
+      period: experience.period || '',
+      description: experience.description || '',
+      bullets: experience.bullets?.join('\n') || '',
+      usedInPostings: experience.usedInPostings || [],
+    });
+  }
 
   const handleSave = () => {
     onSave({
