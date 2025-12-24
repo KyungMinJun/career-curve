@@ -73,10 +73,28 @@ export function GoalsTab() {
   return (
     <div className="flex flex-col h-full">
       <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
-        <h1 className="text-xl font-bold text-foreground">이직 목표</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          목표를 정하고 기록하세요
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">이직 목표</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              목표를 정하고 기록하세요
+            </p>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              if (currentGoal && (currentGoal.reason.trim() || currentGoal.careerPath?.trim())) {
+                archiveGoal({ ...currentGoal, endDate: currentGoal.endDate ?? new Date(), updatedAt: new Date() });
+              }
+              setGoal(createBlankGoal());
+              setIsEditingGoals(true);
+            }}
+          >
+            <Target className="w-4 h-4 mr-2" />
+            새 목표
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide">
@@ -147,33 +165,15 @@ export function GoalsTab() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setIsEditingGoals(true)}
-                >
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  목표 수정
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    // 새 목표 시작 = 현재 목표를 이전 기록으로 보내고 새로 시작
-                    if (currentGoal.reason.trim() || currentGoal.careerPath?.trim()) {
-                      archiveGoal({ ...currentGoal, endDate: currentGoal.endDate ?? new Date(), updatedAt: new Date() });
-                    }
-                    setGoal(createBlankGoal());
-                    setIsEditingGoals(true);
-                  }}
-                >
-                  <Target className="w-4 h-4 mr-2" />
-                  새 목표 시작
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setIsEditingGoals(true)}
+              >
+                <Edit2 className="w-4 h-4 mr-2" />
+                목표 수정
+              </Button>
             </div>
           )}
         </div>

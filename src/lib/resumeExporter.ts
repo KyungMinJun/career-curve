@@ -154,6 +154,7 @@ export async function exportResumeToDocx({ userName, experiences }: ResumeData):
   });
 
   const blob = await Packer.toBlob(doc);
-  const fileName = `${userName || 'resume'}_resume_${new Date().toISOString().split('T')[0]}.docx`;
+  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const fileName = `Resume_${userName || 'User'}_${dateStr}.docx`;
   saveAs(blob, fileName);
 }

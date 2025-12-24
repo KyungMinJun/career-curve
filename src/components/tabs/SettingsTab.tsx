@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { User, ChevronRight, FileText, Shield } from 'lucide-react';
 import { useJobStore } from '@/stores/jobStore';
+import { AccountSheet } from '@/components/settings/AccountSheet';
 
 export function SettingsTab() {
-  const { jobPostings, userName, currentGoal } = useJobStore();
+  const { jobPostings, currentGoal } = useJobStore();
+  const [accountOpen, setAccountOpen] = useState(false);
+
   const interviewCount = jobPostings.filter(j => j.status === 'interview').length;
   const appliedCount = jobPostings.filter(j => j.status !== 'reviewing').length;
   const start = currentGoal?.startDate ? new Date(currentGoal.startDate) : null;
@@ -40,7 +44,7 @@ export function SettingsTab() {
 
         {/* Menu Items */}
         <div className="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
-          <MenuItem icon={User} label="계정" />
+          <MenuItem icon={User} label="계정" onClick={() => setAccountOpen(true)} />
           <MenuItem icon={FileText} label="이용약관" />
           <MenuItem icon={Shield} label="개인정보처리방침" />
         </div>
@@ -49,13 +53,18 @@ export function SettingsTab() {
           커브 v1.0.0
         </p>
       </div>
+
+      <AccountSheet open={accountOpen} onOpenChange={setAccountOpen} />
     </div>
   );
 }
 
-function MenuItem({ icon: Icon, label }: { icon: typeof User; label: string }) {
+function MenuItem({ icon: Icon, label, onClick }: { icon: typeof User; label: string; onClick?: () => void }) {
   return (
-    <button className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-secondary/50 transition-colors">
+    <button
+      onClick={onClick}
+      className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-secondary/50 transition-colors"
+    >
       <div className="flex items-center gap-3">
         <Icon className="w-5 h-5 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">{label}</span>
