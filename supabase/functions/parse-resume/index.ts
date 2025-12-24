@@ -11,19 +11,22 @@ serve(async (req) => {
   }
 
   try {
-    const { fileName, resumeId, resumeText } = await req.json();
-    
+    const { fileName, resumeId, resumeText, pageImages } = await req.json();
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // If no resume text provided, we cannot parse
-    if (!resumeText || resumeText.trim().length === 0) {
-      console.log('No resume text provided');
+    const hasText = typeof resumeText === 'string' && resumeText.trim().length > 0;
+    const hasImages = Array.isArray(pageImages) && pageImages.length > 0;
+
+    // 텍스트도 이미지도 없으면 파싱 불가
+    if (!hasText && !hasImages) {
+      console.log('No resume text or images provided');
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           experiences: [],
           message: 'No resume content to parse'
         }),
@@ -31,13 +34,13 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert resume parser. Extract work experiences and projects from the resume.
+    const systemPrompt = `You are an expert resume parser.
 
 CRITICAL INSTRUCTIONS:
 1. ONLY extract information that is ACTUALLY in the resume. Do NOT make up or hallucinate any experiences.
-2. Categorize each item as either "work" (for job positions, employment) or "project" (for side projects, personal projects, academic projects).
-3. Extract the actual title, company/organization name, description, and bullet points from the resume.
-4. If information is unclear, use what's written - do not invent details.
+2. If the provided content is unreadable / too small to be confident, return an EMPTY experiences array.
+3. Categorize each item as either "work" (employment) or "project" (projects).
+4. Extract the actual title, company/organization name (if present), description, and bullet points.
 
 Return a JSON object with:
 - experiences: array of objects with:
@@ -49,7 +52,36 @@ Return a JSON object with:
 
 Always respond in Korean if the resume is in Korean, otherwise match the resume language.`;
 
-    console.log('Parsing resume with AI, text length:', resumeText.length);
+    const model = hasImages ? 'google/gemini-2.5-pro' : 'google/gemini-2.5-flash';
+
+    console.log('Parsing resume with AI', {
+      fileName,
+      resumeId,
+      textLength: hasText ? resumeText.length : 0,
+      images: hasImages ? pageImages.length : 0,
+      model,
+    });
+
+    const userContent = (() => {
+      if (hasImages) {
+        // OpenAI-compatible multimodal message format
+        const parts: any[] = [
+          {
+            type: 'text',
+            text:
+              '아래 이력서 PDF 페이지 이미지에서 텍스트를 읽고(필요하면 OCR) 경력/프로젝트를 추출해 주세요. 내용이 불명확하면 experiences를 빈 배열로 반환하세요.'
+          },
+        ];
+
+        for (const img of pageImages.slice(0, 2)) {
+          parts.push({ type: 'image_url', image_url: { url: img } });
+        }
+
+        return parts;
+      }
+
+      return `Parse this resume and extract experiences:\n\n${String(resumeText).substring(0, 12000)}`;
+    })();
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -58,10 +90,10 @@ Always respond in Korean if the resume is in Korean, otherwise match the resume 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Parse this resume and extract experiences:\n\n${resumeText.substring(0, 10000)}` }
+          { role: 'user', content: userContent }
         ],
         tools: [
           {
@@ -105,13 +137,13 @@ Always respond in Korean if the resume is in Korean, otherwise match the resume 
     const aiData = await aiResponse.json();
     console.log('AI response received');
 
-    let experiences = [];
+    let experiences: any[] = [];
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    
+
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        experiences = parsed.experiences || [];
+        experiences = Array.isArray(parsed.experiences) ? parsed.experiences : [];
         console.log('Extracted experiences:', experiences.length);
       } catch (e) {
         console.error('Failed to parse tool call arguments:', e);

@@ -28,7 +28,7 @@ import {
 import { toast } from 'sonner';
 import { Experience, Resume, ExperienceType } from '@/types/job';
 import { supabase } from '@/integrations/supabase/client';
-import { extractTextFromPdf } from '@/lib/pdfParser';
+import { extractTextFromPdf, renderPdfToImageDataUrls } from '@/lib/pdfParser';
 
 export function CareerTab() {
   const { experiences, resumes, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume } = useJobStore();
@@ -57,7 +57,7 @@ export function CareerTab() {
 
     try {
       const fileUrl = URL.createObjectURL(file);
-      
+
       const newResume: Resume = {
         id: Date.now().toString(),
         fileName: file.name,
@@ -69,7 +69,7 @@ export function CareerTab() {
       addResume(newResume);
       toast.success('이력서가 업로드되었습니다. 분석 중...');
 
-      // Extract text from PDF
+      // 1) PDF 텍스트 추출 시도
       let resumeText = '';
       try {
         resumeText = await extractTextFromPdf(file);
@@ -78,31 +78,42 @@ export function CareerTab() {
         console.error('Failed to extract PDF text:', err);
       }
 
-      // If we couldn't extract text, ask user to manually enter
-      if (!resumeText || resumeText.length < 50) {
-        updateResume(newResume.id, { 
-          parseStatus: 'fail', 
-          parseError: 'PDF에서 텍스트를 추출할 수 없습니다. 경험을 직접 추가해주세요.' 
+      // 2) 텍스트가 거의 없으면(스캔본 등) → 이미지(OCR) 기반으로 분석
+      let pageImages: string[] | undefined;
+      if (!resumeText || resumeText.trim().length < 50) {
+        try {
+          pageImages = await renderPdfToImageDataUrls(file, { maxPages: 2 });
+          console.log('Rendered pages for OCR:', pageImages.length);
+        } catch (err) {
+          console.error('Failed to render PDF pages:', err);
+        }
+      }
+
+      // 3) 둘 다 실패하면 사용자에게 안내
+      if ((!resumeText || resumeText.trim().length < 50) && (!pageImages || pageImages.length === 0)) {
+        updateResume(newResume.id, {
+          parseStatus: 'fail',
+          parseError: 'PDF에서 텍스트를 추출할 수 없습니다. (스캔본/이미지 기반 PDF일 수 있어요) 경험을 직접 추가해주세요.'
         });
-        toast.error('PDF 텍스트 추출 실패. 경험을 직접 추가해주세요.');
+        toast.error('PDF 텍스트 추출 실패. (스캔본이면 OCR도 필요합니다)');
         setIsUploading(false);
         return;
       }
 
-      // Call AI to parse resume with actual text
+      // 4) 백엔드 분석 호출 (텍스트 우선, 필요시 이미지로 OCR)
       try {
         const { data, error } = await supabase.functions.invoke('parse-resume', {
-          body: { 
-            fileName: file.name, 
+          body: {
+            fileName: file.name,
             resumeId: newResume.id,
-            resumeText: resumeText
+            resumeText: resumeText,
+            pageImages,
           }
         });
 
         if (error) throw error;
 
         if (data?.experiences && data.experiences.length > 0) {
-          // Clear any default sample experiences before adding parsed ones
           data.experiences.forEach((exp: any) => {
             addExperience({
               id: Date.now().toString() + Math.random(),
@@ -118,7 +129,7 @@ export function CareerTab() {
           updateResume(newResume.id, { parseStatus: 'success' });
           toast.success(`이력서 분석 완료! ${data.experiences.length}개의 경험을 추출했습니다.`);
         } else {
-          updateResume(newResume.id, { parseStatus: 'fail', parseError: '경험을 추출할 수 없습니다' });
+          updateResume(newResume.id, { parseStatus: 'fail', parseError: '이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.' });
           toast.error('이력서에서 경험을 추출할 수 없습니다. 직접 추가해주세요.');
         }
       } catch (parseError) {
