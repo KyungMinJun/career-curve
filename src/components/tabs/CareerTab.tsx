@@ -670,14 +670,44 @@ function ExperienceDialog({ open, onOpenChange, experience, defaultType, onSave 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="expBullets">주요 성과 (줄바꿈으로 구분)</Label>
-            <Textarea
-              id="expBullets"
-              value={formData.bullets}
-              onChange={(e) => setFormData({ ...formData, bullets: e.target.value })}
-              placeholder="• MAU 50만 서비스 개발&#10;• 성능 30% 개선"
-              rows={4}
-            />
+            <Label htmlFor="expBullets">주요 성과</Label>
+            <div className="space-y-2">
+              {(formData.bullets || '').split('\n').map((bullet, idx, arr) => (
+                <div key={idx} className="flex items-start gap-2">
+                  <span className="text-primary mt-2.5 text-sm">•</span>
+                  <Input
+                    value={bullet}
+                    onChange={(e) => {
+                      const newBullets = [...arr];
+                      newBullets[idx] = e.target.value;
+                      setFormData({ ...formData, bullets: newBullets.join('\n') });
+                    }}
+                    placeholder="성과를 입력하세요"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-8 h-8 text-destructive shrink-0"
+                    onClick={() => {
+                      const newBullets = arr.filter((_, i) => i !== idx);
+                      setFormData({ ...formData, bullets: newBullets.join('\n') });
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setFormData({ ...formData, bullets: formData.bullets ? formData.bullets + '\n' : '' })}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                성과 추가
+              </Button>
+            </div>
           </div>
 
           <div className="flex gap-2 pt-2">

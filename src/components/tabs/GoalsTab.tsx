@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Target, Calendar, Edit2, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { Target, Calendar, Edit2, History, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,7 @@ function createBlankGoal(): CareerGoal {
 }
 
 export function GoalsTab() {
-  const { currentGoal, setGoal, goalHistory, archiveGoal } = useJobStore();
+  const { currentGoal, setGoal, goalHistory, archiveGoal, removeGoalHistory } = useJobStore();
   const [isEditingGoals, setIsEditingGoals] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -75,7 +75,7 @@ export function GoalsTab() {
       <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">이직 목표</h1>
+            <h1 className="text-xl font-bold text-foreground">커리어 목표</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               목표를 정하고 기록하세요
             </p>
@@ -140,26 +140,31 @@ export function GoalsTab() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">
                   회사 평가 기준 (우선순위)
                 </p>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {[...currentGoal.companyEvalCriteria]
                     .sort((a, b) => b.weight - a.weight)
                     .map((c, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
-                          {i + 1}
-                        </span>
-                        <span className="flex-1 text-foreground">{c.name}</span>
-                        <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <div
-                              key={n}
-                              className={cn(
-                                'w-2 h-2 rounded-full',
-                                n <= c.weight ? 'bg-primary' : 'bg-muted'
-                              )}
-                            />
-                          ))}
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                            {i + 1}
+                          </span>
+                          <span className="flex-1 text-foreground">{c.name}</span>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <div
+                                key={n}
+                                className={cn(
+                                  'w-2 h-2 rounded-full',
+                                  n <= c.weight ? 'bg-primary' : 'bg-muted'
+                                )}
+                              />
+                            ))}
+                          </div>
                         </div>
+                        {c.description && (
+                          <p className="text-xs text-muted-foreground ml-7">{c.description}</p>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -206,15 +211,39 @@ export function GoalsTab() {
                   goalHistory.map((record) => (
                     <div
                       key={record.id}
-                      className="bg-secondary/30 rounded-lg p-3 space-y-2"
+                      className="bg-secondary/30 rounded-lg p-3 space-y-2 group"
                     >
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-foreground">
-                          {record.goal.reason}
+                          {record.goal.reason || '(이유 없음)'}
                         </p>
-                        <Badge variant="outline" className="text-xs">
-                          {record.archivedAt.toLocaleDateString('ko-KR')}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {record.archivedAt.toLocaleDateString('ko-KR')}
+                          </Badge>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-7 h-7"
+                              onClick={() => {
+                                setGoal(record.goal);
+                                removeGoalHistory(record.id);
+                                setIsEditingGoals(true);
+                              }}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-7 h-7 text-destructive hover:text-destructive"
+                              onClick={() => removeGoalHistory(record.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                       {record.goal.careerPath && (
                         <p className="text-xs text-muted-foreground">
@@ -280,6 +309,12 @@ function GoalsEditDialog({ open, onOpenChange, goal, onSave }: GoalsEditDialogPr
   const updateCriteriaName = (index: number, name: string) => {
     const updated = [...formData.companyEvalCriteria];
     updated[index] = { ...updated[index], name };
+    setFormData({ ...formData, companyEvalCriteria: updated });
+  };
+
+  const updateCriteriaDescription = (index: number, description: string) => {
+    const updated = [...formData.companyEvalCriteria];
+    updated[index] = { ...updated[index], description };
     setFormData({ ...formData, companyEvalCriteria: updated });
   };
 
@@ -373,27 +408,36 @@ function GoalsEditDialog({ open, onOpenChange, goal, onSave }: GoalsEditDialogPr
           <div className="space-y-3">
             <Label>회사 평가 기준 (가중치 클릭으로 조절)</Label>
             {formData.companyEvalCriteria.map((c, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Input
-                  value={c.name}
-                  onChange={(e) => updateCriteriaName(i, e.target.value)}
-                  className="flex-1 h-9"
-                />
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => updateCriteriaWeight(i, n)}
-                      className={cn(
-                        'w-6 h-6 rounded-full transition-colors',
-                        n <= c.weight
-                          ? 'bg-primary'
-                          : 'bg-muted hover:bg-muted-foreground/20'
-                      )}
-                    />
-                  ))}
+              <div key={i} className="space-y-2 p-3 bg-secondary/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={c.name}
+                    onChange={(e) => updateCriteriaName(i, e.target.value)}
+                    className="flex-1 h-9"
+                    placeholder="기준 이름"
+                  />
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => updateCriteriaWeight(i, n)}
+                        className={cn(
+                          'w-6 h-6 rounded-full transition-colors',
+                          n <= c.weight
+                            ? 'bg-primary'
+                            : 'bg-muted hover:bg-muted-foreground/20'
+                        )}
+                      />
+                    ))}
+                  </div>
                 </div>
+                <Input
+                  value={c.description || ''}
+                  onChange={(e) => updateCriteriaDescription(i, e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="이 기준이 왜 중요한지 설명해주세요 (선택)"
+                />
               </div>
             ))}
           </div>

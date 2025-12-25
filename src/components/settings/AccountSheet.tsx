@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useJobStore } from '@/stores/jobStore';
 import { toast } from 'sonner';
+import { ProfileEditSheet } from './ProfileEditSheet';
 
 interface AccountSheetProps {
   open: boolean;
@@ -26,20 +27,14 @@ interface AccountSheetProps {
 
 export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { userName, setUserName } = useJobStore();
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   const menuItems = [
     {
       icon: UserCog,
       label: '개인 정보 변경',
       description: '이름, 연락처 등 수정',
-      onClick: () => {
-        const newName = prompt('새 이름을 입력하세요', userName);
-        if (newName !== null && newName.trim()) {
-          setUserName(newName.trim());
-          toast.success('이름이 변경되었습니다');
-        }
-      },
+      onClick: () => setShowProfileEdit(true),
     },
     {
       icon: KeyRound,
@@ -68,7 +63,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
 
   const handleDeleteAccount = () => {
     // Clear all data from localStorage
-    localStorage.removeItem('job-store');
+    localStorage.removeItem('jobflow-storage');
     toast.success('모든 데이터가 삭제되었습니다');
     setShowDeleteDialog(false);
     onOpenChange(false);
@@ -79,7 +74,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetContent side="bottom" className="rounded-t-2xl max-w-md mx-auto">
           <SheetHeader className="text-left pb-4">
             <SheetTitle>계정</SheetTitle>
           </SheetHeader>
@@ -137,6 +132,8 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProfileEditSheet open={showProfileEdit} onOpenChange={setShowProfileEdit} />
     </>
   );
 }

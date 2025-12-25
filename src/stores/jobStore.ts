@@ -31,6 +31,7 @@ interface JobStore {
   setGoal: (goal: CareerGoal) => void;
   goalHistory: GoalHistory[];
   archiveGoal: (goal: CareerGoal) => void;
+  removeGoalHistory: (id: string) => void;
 
   // User info
   userName: string;
@@ -143,6 +144,10 @@ export const useJobStore = create<JobStore>()(
       archiveGoal: (goal) =>
         set((state) => ({
           goalHistory: [...state.goalHistory, { id: Date.now().toString(), goal, archivedAt: new Date() }],
+        })),
+      removeGoalHistory: (id) =>
+        set((state) => ({
+          goalHistory: state.goalHistory.filter((h) => h.id !== id),
         })),
 
       // User info
