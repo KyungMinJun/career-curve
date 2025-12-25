@@ -396,6 +396,11 @@ function KanbanView({
           job={selectedJob}
           open={!!selectedJob}
           onOpenChange={(open) => !open && setSelectedJob(null)}
+          onNavigateToCareer={() => {
+            setSelectedJob(null);
+            // Navigate to career tab - will be handled by parent component
+            window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'career' }));
+          }}
         />
       )}
     </>

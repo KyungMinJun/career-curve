@@ -49,9 +49,10 @@ interface JobDetailDialogProps {
   job: JobPosting;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onNavigateToCareer?: () => void;
 }
 
-export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProps) {
+export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }: JobDetailDialogProps) {
   const { updateJobPosting, currentGoal, experiences } = useJobStore();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -146,10 +147,21 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
     setEditingField(null);
   };
 
-  const renderStarRating = (value: number, onChange: (v: number) => void, size: 'sm' | 'md' = 'md') => (
+  const renderStarRating = (value: number, onChange: (v: number) => void, size: 'sm' | 'md' = 'md', allowZero: boolean = false) => (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
-        <button key={i} onClick={() => onChange(i)} className="focus:outline-none">
+        <button 
+          key={i} 
+          onClick={() => {
+            // Allow setting to 0 by clicking the same star again
+            if (allowZero && value === i) {
+              onChange(0);
+            } else {
+              onChange(i);
+            }
+          }} 
+          className="focus:outline-none"
+        >
           <Star className={cn(
             'transition-colors', 
             size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
@@ -275,67 +287,79 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
                   />
 
                   {keyCompetencyScores.map((comp, idx) => (
-                    <div key={idx} className="bg-secondary/30 rounded-lg p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{comp.title}</p>
-                          <p className="text-xs text-muted-foreground">{comp.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">나의 역량:</span>
-                        {renderStarRating(comp.score || 0, (v) => handleKeyCompetencyScoreChange(idx, v), 'sm')}
-                      </div>
-                      {/* AI Evaluation */}
-                      {comp.evaluation && editingEvaluation !== idx && (
-                        <div className="bg-background/50 rounded p-2 mt-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs text-muted-foreground italic flex-1">{comp.evaluation}</p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-6 h-6 shrink-0"
-                              onClick={() => {
-                                setEditingEvaluation(idx);
-                                setEditEvalText(comp.evaluation || '');
-                              }}
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
+                    <Collapsible key={idx}>
+                      <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{comp.title}</p>
+                            <p className="text-xs text-muted-foreground">{comp.description}</p>
                           </div>
                         </div>
-                      )}
-                      {editingEvaluation === idx && (
-                        <div className="mt-2 space-y-2">
-                          <Textarea
-                            value={editEvalText}
-                            onChange={(e) => setEditEvalText(e.target.value)}
-                            className="text-xs min-h-[60px]"
-                            placeholder="평가 의견을 수정하세요..."
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingEvaluation(null);
-                                setEditEvalText('');
-                              }}
-                            >
-                              <X className="w-3 h-3 mr-1" />
-                              취소
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleEvaluationUpdate(idx, editEvalText)}
-                            >
-                              <Check className="w-3 h-3 mr-1" />
-                              저장
-                            </Button>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">나의 역량:</span>
+                          {renderStarRating(comp.score || 0, (v) => handleKeyCompetencyScoreChange(idx, v), 'sm')}
                         </div>
-                      )}
-                    </div>
+                        {/* AI Evaluation Toggle */}
+                        {comp.evaluation && (
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground h-7 px-2">
+                              <span>AI 평가 보기</span>
+                              <ChevronDown className="w-3 h-3" />
+                            </Button>
+                          </CollapsibleTrigger>
+                        )}
+                        <CollapsibleContent>
+                          {comp.evaluation && editingEvaluation !== idx && (
+                            <div className="bg-background/50 rounded p-2 mt-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs text-muted-foreground italic flex-1">{comp.evaluation}</p>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="w-6 h-6 shrink-0"
+                                  onClick={() => {
+                                    setEditingEvaluation(idx);
+                                    setEditEvalText(comp.evaluation || '');
+                                  }}
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {editingEvaluation === idx && (
+                            <div className="mt-2 space-y-2">
+                              <Textarea
+                                value={editEvalText}
+                                onChange={(e) => setEditEvalText(e.target.value)}
+                                className="text-xs min-h-[60px]"
+                                placeholder="평가 의견을 수정하세요..."
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingEvaluation(null);
+                                    setEditEvalText('');
+                                  }}
+                                >
+                                  <X className="w-3 h-3 mr-1" />
+                                  취소
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleEvaluationUpdate(idx, editEvalText)}
+                                >
+                                  <Check className="w-3 h-3 mr-1" />
+                                  저장
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
                   ))}
                 </div>
               )}
@@ -419,14 +443,14 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 pt-4">
-                  <p className="text-xs text-muted-foreground">목표 탭에서 설정한 5가지 기준으로 회사를 평가하세요.</p>
+                  <p className="text-xs text-muted-foreground">목표 탭에서 설정한 5가지 기준으로 회사를 평가하세요. 같은 별을 다시 누르면 0점으로 초기화됩니다.</p>
                   {companyCriteriaScores.map((criteria, index) => (
                     <div key={index} className="bg-secondary/30 rounded-lg p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{criteria.name}</span>
                         <Badge variant="outline" className="text-xs">가중치 {criteria.weight}</Badge>
                       </div>
-                      {renderStarRating(criteria.score || 0, (v) => handleCompanyCriteriaScoreChange(index, v), 'sm')}
+                      {renderStarRating(criteria.score || 0, (v) => handleCompanyCriteriaScoreChange(index, v), 'sm', true)}
                     </div>
                   ))}
                 </CollapsibleContent>
@@ -452,6 +476,10 @@ export function JobDetailDialog({ job, open, onOpenChange }: JobDetailDialogProp
         job={job}
         keyCompetencies={keyCompetencyScores}
         experiences={experiences}
+        onNavigateToCareer={() => {
+          onOpenChange(false);
+          onNavigateToCareer?.();
+        }}
       />
     </>
   );

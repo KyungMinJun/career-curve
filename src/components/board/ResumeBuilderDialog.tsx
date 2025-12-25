@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save } from 'lucide-react';
+import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useJobStore } from '@/stores/jobStore';
@@ -22,6 +22,7 @@ interface ResumeBuilderDialogProps {
   job: JobPosting;
   keyCompetencies: KeyCompetency[];
   experiences: Experience[];
+  onNavigateToCareer?: () => void;
 }
 
 type ResumeFormat = 'standard' | 'creative' | 'minimal';
@@ -44,6 +45,7 @@ export function ResumeBuilderDialog({
   job,
   keyCompetencies,
   experiences,
+  onNavigateToCareer,
 }: ResumeBuilderDialogProps) {
   const [step, setStep] = useState(1);
   const [selectedFormat, setSelectedFormat] = useState<ResumeFormat>('standard');
@@ -51,6 +53,7 @@ export function ResumeBuilderDialog({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const [rawAIContent, setRawAIContent] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
   const { addTailoredResume } = useJobStore();
 
   const workExperiences = useMemo(() => experiences.filter(e => e.type === 'work'), [experiences]);
@@ -64,6 +67,7 @@ export function ResumeBuilderDialog({
       setStep(1);
       setGeneratedContent(null);
       setIsGenerating(false);
+      setIsSaved(false);
     }
   }, [open, workExperiences]);
 
@@ -138,8 +142,13 @@ export function ResumeBuilderDialog({
     };
 
     addTailoredResume(newTailoredResume);
+    setIsSaved(true);
     toast.success('공고별 이력서가 저장되었습니다');
+  };
+
+  const handleNavigateToCareer = () => {
     onOpenChange(false);
+    onNavigateToCareer?.();
   };
 
   const Step1 = () => (
@@ -195,10 +204,10 @@ export function ResumeBuilderDialog({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
         {workExperiences.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold">경력 (자동 선택됨)</h4>
+            <h4 className="text-sm font-semibold sticky top-0 bg-background py-1 z-10">경력 (자동 선택됨)</h4>
             {workExperiences.map((exp) => (
               <ExperienceCheckbox
                 key={exp.id}
@@ -212,7 +221,7 @@ export function ResumeBuilderDialog({
 
         {projectExperiences.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold">프로젝트</h4>
+            <h4 className="text-sm font-semibold sticky top-0 bg-background py-1 z-10">프로젝트</h4>
             {projectExperiences.map((exp) => (
               <ExperienceCheckbox
                 key={exp.id}
@@ -312,26 +321,40 @@ export function ResumeBuilderDialog({
 
           {step === 3 && (
             <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={handleCopyToClipboard}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  복사
-                </Button>
-                <Button className="flex-1" onClick={handleSaveToCareer}>
-                  <Save className="w-4 h-4 mr-2" />
-                  공고별 이력서 저장
-                </Button>
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full text-muted-foreground"
-                onClick={() => {
-                  setStep(2);
-                  setGeneratedContent(null);
-                }}
-              >
-                다시 생성하기
-              </Button>
+              {!isSaved ? (
+                <>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={handleCopyToClipboard}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      복사
+                    </Button>
+                    <Button className="flex-1" onClick={handleSaveToCareer}>
+                      <Save className="w-4 h-4 mr-2" />
+                      공고별 이력서 저장
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="w-full text-muted-foreground"
+                    onClick={() => {
+                      setStep(2);
+                      setGeneratedContent(null);
+                    }}
+                  >
+                    다시 생성하기
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button className="w-full" onClick={handleNavigateToCareer}>
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    공고별 이력서 확인하기
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+                    닫기
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>
