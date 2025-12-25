@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, ChevronRight, FileText, Shield } from 'lucide-react';
 import { useJobStore } from '@/stores/jobStore';
 import { AccountSheet } from '@/components/settings/AccountSheet';
 
 export function SettingsTab() {
+  const navigate = useNavigate();
   const { jobPostings, currentGoal } = useJobStore();
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -45,8 +47,8 @@ export function SettingsTab() {
         {/* Menu Items */}
         <div className="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
           <MenuItem icon={User} label="계정" onClick={() => setAccountOpen(true)} />
-          <MenuItem icon={FileText} label="이용약관" />
-          <MenuItem icon={Shield} label="개인정보처리방침" />
+          <MenuItem icon={FileText} label="이용약관" onClick={() => navigate('/terms')} />
+          <MenuItem icon={Shield} label="개인정보처리방침" onClick={() => navigate('/privacy')} />
         </div>
 
         <p className="text-center text-xs text-muted-foreground pt-4">
@@ -73,3 +75,4 @@ function MenuItem({ icon: Icon, label, onClick }: { icon: typeof User; label: st
     </button>
   );
 }
+

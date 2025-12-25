@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { JobPosting, KeyCompetency, Experience } from '@/types/job';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, Download, CheckCircle2, Loader2, Copy, ArrowRight } from 'lucide-react';
+import { FileText, CheckCircle2, Loader2, Copy, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useJobStore } from '@/stores/jobStore';
@@ -32,7 +32,6 @@ const RESUME_FORMATS: { id: ResumeFormat; name: string; description: string }[] 
   { id: 'minimal', name: '간결형', description: '핵심만 담은 1페이지 이력서' },
 ];
 
-// Detect if text contains mostly English
 function detectLanguage(text: string): 'ko' | 'en' {
   const koreanChars = (text.match(/[가-힣]/g) || []).length;
   const englishChars = (text.match(/[a-zA-Z]/g) || []).length;
@@ -53,8 +52,8 @@ export function ResumeBuilderDialog({
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const { addExperience } = useJobStore();
 
-  const workExperiences = experiences.filter(e => e.type === 'work');
-  const projectExperiences = experiences.filter(e => e.type === 'project');
+  const workExperiences = useMemo(() => experiences.filter(e => e.type === 'work'), [experiences]);
+  const projectExperiences = useMemo(() => experiences.filter(e => e.type === 'project'), [experiences]);
 
   // Auto-select all work experiences when dialog opens
   useEffect(() => {
@@ -63,14 +62,20 @@ export function ResumeBuilderDialog({
       setSelectedExperiences(workIds);
       setStep(1);
       setGeneratedContent(null);
+      setIsGenerating(false);
     }
-  }, [open, workExperiences.length]);
+  }, [open, workExperiences]);
 
   const toggleExperience = (id: string) => {
     setSelectedExperiences(prev =>
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     );
   };
+
+  const language = useMemo(() => {
+    const textToAnalyze = `${job.title} ${job.summary || ''}`;
+    return detectLanguage(textToAnalyze);
+  }, [job.title, job.summary]);
 
   const handleGenerate = async () => {
     if (selectedExperiences.length === 0) {
@@ -82,10 +87,6 @@ export function ResumeBuilderDialog({
     setGeneratedContent(null);
 
     try {
-      // Detect language from job title and summary
-      const textToAnalyze = `${job.title} ${job.summary || ''}`;
-      const language = detectLanguage(textToAnalyze);
-
       const selectedExps = experiences.filter(e => selectedExperiences.includes(e.id));
 
       const { data, error } = await supabase.functions.invoke('generate-resume', {
@@ -93,19 +94,15 @@ export function ResumeBuilderDialog({
           jobTitle: job.title,
           companyName: job.companyName,
           jobSummary: job.summary || '',
-          keyCompetencies: keyCompetencies,
+          keyCompetencies,
           experiences: selectedExps,
           language,
+          format: selectedFormat,
         },
       });
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate resume');
-      }
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to generate resume');
 
       setGeneratedContent(data.content);
       setStep(3);
@@ -119,23 +116,28 @@ export function ResumeBuilderDialog({
   };
 
   const handleCopyToClipboard = async () => {
-    if (generatedContent) {
-      await navigator.clipboard.writeText(generatedContent);
-      toast.success('클립보드에 복사되었습니다');
-    }
+    if (!generatedContent) return;
+    await navigator.clipboard.writeText(generatedContent);
+    toast.success('클립보드에 복사되었습니다');
   };
 
   const handleSaveToCareer = () => {
     if (!generatedContent) return;
 
-    // Save as a new experience in career tab
+    const bullets = generatedContent
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .filter(line => line.startsWith('•') || line.startsWith('-'))
+      .map(line => line.replace(/^[-•]\s*/, '').trim());
+
     const newExperience: Experience = {
       id: Date.now().toString(),
       type: 'project',
       title: `${job.companyName} 맞춤 이력서`,
       company: job.companyName,
-      description: `${job.title} 포지션 맞춤 이력서`,
-      bullets: generatedContent.split('\n').filter(line => line.trim().startsWith('•')).map(line => line.replace('•', '').trim()),
+      description: `${job.title} 포지션 맞춤 이력서 (${language === 'ko' ? '국문' : '영문'})`,
+      bullets: bullets.length ? bullets : [generatedContent.slice(0, 200)],
       usedInPostings: [job.id],
       createdAt: new Date(),
     };
@@ -143,16 +145,14 @@ export function ResumeBuilderDialog({
     addExperience(newExperience);
     toast.success('경력 탭에 저장되었습니다');
     onOpenChange(false);
-    setStep(1);
-    setGeneratedContent(null);
   };
 
-  const renderStep1 = () => (
+  const Step1 = () => (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         공고에서 요구하는 핵심 역량에 맞는 이력서 형식을 선택하세요.
       </p>
-      
+
       <div className="space-y-3">
         {RESUME_FORMATS.map((format) => (
           <div
@@ -178,14 +178,13 @@ export function ResumeBuilderDialog({
         ))}
       </div>
 
-      <Button className="w-full" onClick={() => setStep(2)}>
-        다음: 경험 선택
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
+      <p className="text-xs text-muted-foreground">
+        생성 언어: {language === 'ko' ? '국문' : '영문'} (공고 언어 기반)
+      </p>
     </div>
   );
 
-  const renderStep2 = () => (
+  const Step2 = () => (
     <div className="space-y-4">
       <div className="space-y-2">
         <h4 className="text-sm font-semibold">핵심 역량 기준</h4>
@@ -218,7 +217,7 @@ export function ResumeBuilderDialog({
 
         {projectExperiences.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold">프로젝트 (AI가 관련 경험 추천)</h4>
+            <h4 className="text-sm font-semibold">프로젝트</h4>
             {projectExperiences.map((exp) => (
               <ExperienceCheckbox
                 key={exp.id}
@@ -236,37 +235,14 @@ export function ResumeBuilderDialog({
           </p>
         )}
       </div>
-
-      <div className="flex gap-2">
-        <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
-          이전
-        </Button>
-        <Button 
-          className="flex-1" 
-          onClick={handleGenerate}
-          disabled={isGenerating || selectedExperiences.length === 0}
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              생성 중...
-            </>
-          ) : (
-            <>
-              맞춤 이력서 생성
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </>
-          )}
-        </Button>
-      </div>
     </div>
   );
 
-  const renderStep3 = () => (
+  const Step3 = () => (
     <div className="space-y-4">
       <div className="space-y-2">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-success" />
+          <CheckCircle2 className="w-4 h-4 text-primary" />
           맞춤 이력서 생성 완료
         </h4>
         <p className="text-xs text-muted-foreground">
@@ -274,58 +250,95 @@ export function ResumeBuilderDialog({
         </p>
       </div>
 
-      <div className="bg-secondary/30 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+      <div className="bg-secondary/30 rounded-lg p-4">
         <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
           {generatedContent}
         </pre>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={handleCopyToClipboard}>
-            <Copy className="w-4 h-4 mr-2" />
-            복사
-          </Button>
-          <Button className="flex-1" onClick={handleSaveToCareer}>
-            <Download className="w-4 h-4 mr-2" />
-            경력탭에 저장
-          </Button>
-        </div>
-        <Button 
-          variant="ghost" 
-          className="w-full text-muted-foreground"
-          onClick={() => {
-            setStep(2);
-            setGeneratedContent(null);
-          }}
-        >
-          다시 생성하기
-        </Button>
       </div>
     </div>
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            맞춤 이력서 만들기
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-md max-h-[85vh] rounded-2xl flex flex-col p-0">
+        <div className="px-6 pt-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              맞춤 이력서 만들기
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex items-center gap-2 mb-4">
-          <div className={cn('flex-1 h-1 rounded-full', step >= 1 ? 'bg-primary' : 'bg-muted')} />
-          <div className={cn('flex-1 h-1 rounded-full', step >= 2 ? 'bg-primary' : 'bg-muted')} />
-          <div className={cn('flex-1 h-1 rounded-full', step >= 3 ? 'bg-primary' : 'bg-muted')} />
+          <div className="flex items-center gap-2 mt-4">
+            <div className={cn('flex-1 h-1 rounded-full', step >= 1 ? 'bg-primary' : 'bg-muted')} />
+            <div className={cn('flex-1 h-1 rounded-full', step >= 2 ? 'bg-primary' : 'bg-muted')} />
+            <div className={cn('flex-1 h-1 rounded-full', step >= 3 ? 'bg-primary' : 'bg-muted')} />
+          </div>
         </div>
 
-        <ScrollArea className="max-h-[60vh]">
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
+        <ScrollArea className="flex-1 px-6 py-4">
+          {step === 1 && <Step1 />}
+          {step === 2 && <Step2 />}
+          {step === 3 && <Step3 />}
         </ScrollArea>
+
+        <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
+          {step === 1 && (
+            <Button className="w-full" onClick={() => setStep(2)}>
+              다음: 경험 선택
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          )}
+
+          {step === 2 && (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setStep(1)} disabled={isGenerating}>
+                이전
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleGenerate}
+                disabled={isGenerating || selectedExperiences.length === 0}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    맞춤 이력서 생성
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={handleCopyToClipboard}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  복사
+                </Button>
+                <Button className="flex-1" onClick={handleSaveToCareer}>
+                  경력탭에 저장
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={() => {
+                  setStep(2);
+                  setGeneratedContent(null);
+                }}
+              >
+                다시 생성하기
+              </Button>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -367,3 +380,4 @@ function ExperienceCheckbox({
     </div>
   );
 }
+

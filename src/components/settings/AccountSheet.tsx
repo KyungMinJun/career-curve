@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, KeyRound, UserCog, UserX, ChevronRight } from 'lucide-react';
 import {
@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner';
 import { ProfileEditSheet } from './ProfileEditSheet';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AccountSheetProps {
   open: boolean;
@@ -32,11 +33,29 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
+  const userEmail = useMemo(() => user?.email ?? null, [user]);
+
   const handleLogout = async () => {
     await signOut();
     toast.success('로그아웃되었습니다');
     onOpenChange(false);
-    navigate('/auth');
+    navigate('/auth', { replace: true });
+  };
+
+  const handleSendPasswordReset = async () => {
+    if (!userEmail) {
+      toast.info('로그인 후 사용 가능합니다');
+      return;
+    }
+
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo });
+      if (error) throw error;
+      toast.success('재설정 링크를 이메일로 보냈습니다');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '재설정 링크 발송에 실패했습니다');
+    }
   };
 
   const menuItems = [
@@ -48,15 +67,9 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
     },
     {
       icon: KeyRound,
-      label: '비밀번호 찾기',
+      label: user ? '비밀번호 변경' : '비밀번호 찾기',
       description: '이메일로 재설정 링크 발송',
-      onClick: () => {
-        if (!user) {
-          toast.info('로그인 후 사용 가능합니다');
-          return;
-        }
-        toast.info('비밀번호 재설정 기능은 준비 중입니다');
-      },
+      onClick: handleSendPasswordReset,
     },
     {
       icon: LogOut,
@@ -67,7 +80,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
           handleLogout();
         } else {
           onOpenChange(false);
-          navigate('/auth');
+          navigate('/auth', { replace: true });
         }
       },
     },
@@ -81,16 +94,13 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   ];
 
   const handleDeleteAccount = async () => {
-    // Clear all data from localStorage
     localStorage.removeItem('jobflow-storage');
-    // Sign out if logged in
     if (user) {
       await signOut();
     }
     toast.success('모든 데이터가 삭제되었습니다');
     setShowDeleteDialog(false);
     onOpenChange(false);
-    // Reload to reset state
     window.location.reload();
   };
 
@@ -123,9 +133,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
                     >
                       {item.label}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -160,3 +168,4 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
     </>
   );
 }
+
