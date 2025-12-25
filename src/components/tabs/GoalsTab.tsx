@@ -36,7 +36,8 @@ function toDateInputValue(date: Date) {
 }
 
 function formatKoreanDate(date: Date) {
-  return new Date(date).toLocaleDateString('ko-KR');
+  const d = new Date(date);
+  return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function createBlankGoal(): CareerGoal {
@@ -60,12 +61,26 @@ function createBlankGoal(): CareerGoal {
   };
 }
 
+// Check if goal has content
+function hasGoalContent(goal: CareerGoal | null): boolean {
+  if (!goal) return false;
+  return !!(goal.reason?.trim() || goal.careerPath?.trim() || goal.result?.trim());
+}
+
+// Check if goal has endDate set (should be archived)
+function isGoalEnded(goal: CareerGoal | null): boolean {
+  return !!goal?.endDate;
+}
+
 export function GoalsTab() {
   const { currentGoal, setGoal, goalHistory, archiveGoal, removeGoalHistory } = useJobStore();
   const [isEditingGoals, setIsEditingGoals] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const startDate = currentGoal?.startDate ? new Date(currentGoal.startDate) : null;
+  // If currentGoal has endDate, it should be treated as "no current goal"
+  const hasActiveGoal = currentGoal && !isGoalEnded(currentGoal);
+
+  const startDate = hasActiveGoal ? new Date(currentGoal.startDate) : null;
   const daysSinceStart = startDate
     ? Math.floor((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
@@ -84,7 +99,8 @@ export function GoalsTab() {
             variant="default"
             size="sm"
             onClick={() => {
-              if (currentGoal && (currentGoal.reason.trim() || currentGoal.careerPath?.trim())) {
+              // Archive current goal if it has content
+              if (hasActiveGoal && hasGoalContent(currentGoal)) {
                 archiveGoal({ ...currentGoal, endDate: currentGoal.endDate ?? new Date(), updatedAt: new Date() });
               }
               setGoal(createBlankGoal());
@@ -106,13 +122,15 @@ export function GoalsTab() {
                 <Target className="w-5 h-5 text-primary" />
                 <h2 className="font-semibold text-foreground">현재 목표</h2>
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {daysSinceStart}일째
-              </Badge>
+              {hasActiveGoal && (
+                <Badge variant="secondary" className="text-xs">
+                  {daysSinceStart}일째
+                </Badge>
+              )}
             </div>
           </div>
 
-          {currentGoal && (
+          {hasActiveGoal ? (
             <div className="p-4 space-y-4">
               {/* Search Period */}
               <div className="flex items-center gap-2 bg-primary/10 rounded-lg p-3">
@@ -120,8 +138,7 @@ export function GoalsTab() {
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">현재 목표 기간</p>
                   <p className="text-sm font-medium text-foreground">
-                    {formatKoreanDate(currentGoal.startDate)}부터
-                    {currentGoal.endDate ? ` · ${formatKoreanDate(currentGoal.endDate)}까지` : ''}
+                    {formatKoreanDate(currentGoal.startDate)}~
                   </p>
                 </div>
               </div>
@@ -134,6 +151,14 @@ export function GoalsTab() {
                   <p className="text-xs text-primary">{currentGoal.careerPath}</p>
                 )}
               </div>
+
+              {/* Result */}
+              {currentGoal.result && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">결과</p>
+                  <p className="text-sm text-foreground">{currentGoal.result}</p>
+                </div>
+              )}
 
               {/* Company Eval Criteria - Priority Order */}
               <div className="space-y-2">
@@ -180,6 +205,11 @@ export function GoalsTab() {
                 목표 수정
               </Button>
             </div>
+          ) : (
+            <div className="p-8 text-center">
+              <p className="text-muted-foreground text-sm">현재 목표 없음</p>
+              <p className="text-xs text-muted-foreground mt-1">새 목표 버튼을 눌러 시작하세요</p>
+            </div>
           )}
         </div>
 
@@ -208,19 +238,24 @@ export function GoalsTab() {
                     아직 기록이 없습니다
                   </p>
                 ) : (
-                  goalHistory.map((record) => (
-                    <div
-                      key={record.id}
-                      className="bg-secondary/30 rounded-lg p-3 space-y-2 group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-foreground">
-                          {record.goal.reason || '(이유 없음)'}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {record.archivedAt.toLocaleDateString('ko-KR')}
-                          </Badge>
+                  goalHistory.map((record) => {
+                    const goalStartDate = new Date(record.goal.startDate);
+                    const goalEndDate = record.goal.endDate ? new Date(record.goal.endDate) : null;
+                    const periodStr = goalEndDate 
+                      ? `${formatKoreanDate(goalStartDate)}~${formatKoreanDate(goalEndDate)}`
+                      : `${formatKoreanDate(goalStartDate)}~`;
+                    
+                    return (
+                      <div
+                        key={record.id}
+                        className="bg-secondary/30 rounded-lg p-3 space-y-2 group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {periodStr}
+                            </Badge>
+                          </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
@@ -244,14 +279,19 @@ export function GoalsTab() {
                             </Button>
                           </div>
                         </div>
-                      </div>
-                      {record.goal.careerPath && (
-                        <p className="text-xs text-muted-foreground">
-                          {record.goal.careerPath}
+                        {/* Career Path as main display */}
+                        <p className="text-sm font-medium text-foreground">
+                          {record.goal.careerPath || '(커리어 패스 없음)'}
                         </p>
-                      )}
-                    </div>
-                  ))
+                        {/* Result if exists */}
+                        {record.goal.result && (
+                          <p className="text-xs text-primary">
+                            결과: {record.goal.result}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </CollapsibleContent>
@@ -260,16 +300,18 @@ export function GoalsTab() {
       </div>
 
       {/* Goals Edit Dialog */}
-      {currentGoal && (
+      {(hasActiveGoal || isEditingGoals) && currentGoal && (
         <GoalsEditDialog
           open={isEditingGoals}
           onOpenChange={setIsEditingGoals}
           goal={currentGoal}
           onSave={(newGoal) => {
-            // 종료일이 입력되면 자동으로 "이전 기록"으로 이동 + 새 목표 생성
+            // 종료일이 입력되면 자동으로 "이전 기록"으로 이동 + 현재 목표 비우기
             if (newGoal.endDate) {
               archiveGoal(newGoal);
               setGoal(createBlankGoal());
+              // Set endDate on the blank goal to indicate no active goal
+              setGoal({ ...createBlankGoal(), endDate: new Date() });
               setHistoryOpen(true);
               setIsEditingGoals(false);
               return;
@@ -294,6 +336,7 @@ function GoalsEditDialog({ open, onOpenChange, goal, onSave }: GoalsEditDialogPr
   const [formData, setFormData] = useState({
     reason: goal.reason,
     careerPath: goal.careerPath || '',
+    result: goal.result || '',
     searchPeriod: goal.searchPeriod || '',
     companyEvalCriteria: [...goal.companyEvalCriteria],
     startDate: toDateInputValue(goal.startDate),
@@ -326,6 +369,7 @@ function GoalsEditDialog({ open, onOpenChange, goal, onSave }: GoalsEditDialogPr
       ...goal,
       reason: formData.reason,
       careerPath: formData.careerPath || undefined,
+      result: formData.result || undefined,
       searchPeriod: formData.searchPeriod || undefined,
       companyEvalCriteria: formData.companyEvalCriteria,
       startDate,
@@ -339,7 +383,7 @@ function GoalsEditDialog({ open, onOpenChange, goal, onSave }: GoalsEditDialogPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90%] max-h-[80vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle>이직 목표 수정</DialogTitle>
+          <DialogTitle>커리어 목표 수정</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
@@ -401,6 +445,17 @@ function GoalsEditDialog({ open, onOpenChange, goal, onSave }: GoalsEditDialogPr
               value={formData.careerPath}
               onChange={(e) => setFormData({ ...formData, careerPath: e.target.value })}
               placeholder="예: 시니어 엔지니어 → 테크 리드"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="result">결과</Label>
+            <Textarea
+              id="result"
+              value={formData.result}
+              onChange={(e) => setFormData({ ...formData, result: e.target.value })}
+              rows={2}
+              placeholder="이 목표의 결과를 기록하세요"
             />
           </div>
 
