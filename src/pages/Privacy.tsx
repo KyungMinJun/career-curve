@@ -30,7 +30,7 @@ const Privacy = () => {
           <h2 className="text-lg font-semibold mt-6">1. 개인정보의 처리 목적 및 수집 항목</h2>
           <p>회사는 서비스 제공을 위해 최소한의 개인정보만을 처리합니다.</p>
           <ul className="list-disc pl-5 space-y-1 text-sm">
-            <li><strong>회원가입 및 계정 관리:</strong> 이메일(ID), 비밀번호</li>
+            <li><strong>회원가입 및 계정 관리:</strong> 이메일(ID), 비밀번호 또는 전화번호(휴대폰 인증)</li>
             <li><strong>프로필(선택):</strong> 커리어 레벨, 관심 포지션, 이직 상태, 희망 지역, 비자 필요 여부, 이직 목표·판단 기준</li>
             <li><strong>서비스 이용 과정:</strong> 채용 공고 링크 및 분석 결과, 공고 상태·우선순위·평가 기록</li>
             <li><strong>사용자 업로드 정보(선택):</strong> 이력서 파일, 경력·프로젝트 등 경험 정보, 맞춤 이력서 결과물</li>
