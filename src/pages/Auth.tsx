@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.string().email('올바른 이메일 형식이 아닙니다');
 const passwordSchema = z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다');
@@ -26,6 +27,8 @@ export default function Auth() {
     privacyAgreed: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const emailValid = useMemo(() => emailSchema.safeParse(formData.email).success, [formData.email]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -67,7 +70,7 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -113,6 +116,22 @@ export default function Auth() {
     // OAuth redirects, so we don't need to handle success here
   };
 
+  const handleForgotPassword = async () => {
+    if (!emailValid) {
+      toast.error('비밀번호 재설정 링크를 받을 이메일을 입력해주세요');
+      return;
+    }
+
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, { redirectTo });
+      if (error) throw error;
+      toast.success('재설정 링크를 이메일로 보냈습니다');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '재설정 링크 발송에 실패했습니다');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -129,8 +148,8 @@ export default function Auth() {
             {mode === 'login' ? '로그인' : '회원가입'}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {mode === 'login' 
-              ? '계정에 로그인하여 이직 여정을 이어가세요' 
+            {mode === 'login'
+              ? '계정에 로그인하여 이직 여정을 이어가세요'
               : '커브와 함께 체계적인 이직 준비를 시작하세요'}
           </p>
         </div>
@@ -176,13 +195,26 @@ export default function Auth() {
             {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
           </div>
 
+          {mode === 'login' && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-xs text-primary hover:underline"
+                disabled={isSubmitting}
+              >
+                비밀번호 찾기
+              </button>
+            </div>
+          )}
+
           {mode === 'signup' && (
             <div className="space-y-3 pt-2">
               <div className="flex items-start gap-2">
                 <Checkbox
                   id="terms"
                   checked={formData.termsAgreed}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFormData({ ...formData, termsAgreed: checked as boolean })
                   }
                   disabled={isSubmitting}
@@ -197,7 +229,7 @@ export default function Auth() {
                 <Checkbox
                   id="privacy"
                   checked={formData.privacyAgreed}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFormData({ ...formData, privacyAgreed: checked as boolean })
                   }
                   disabled={isSubmitting}
@@ -215,9 +247,7 @@ export default function Auth() {
           )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             {mode === 'login' ? '로그인' : '회원가입'}
           </Button>
         </form>
@@ -275,3 +305,4 @@ export default function Auth() {
     </div>
   );
 }
+
