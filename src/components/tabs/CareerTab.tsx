@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, FileText, Upload, Trash2, Edit2, ChevronDown, ChevronUp, File, Loader2, Briefcase, FolderKanban, Download, FileCheck, Eye, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,28 @@ export function CareerTab() {
   const [isExporting, setIsExporting] = useState(false);
   const [logResumeId, setLogResumeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Board → Career 이동 이벤트 처리
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<any>;
+      const detail = custom.detail;
+      if (!detail || typeof detail !== 'object') return;
+      if (detail.tab !== 'career') return;
+
+      const resumeId = detail.tailoredResumeId as string | undefined;
+      if (!resumeId) return;
+
+      const found = tailoredResumes.find((r) => r.id === resumeId);
+      if (!found) return;
+
+      setTailoredOpen(true);
+      setPreviewingTailoredResume(found);
+    };
+
+    window.addEventListener('navigate-to-tab', handler as EventListener);
+    return () => window.removeEventListener('navigate-to-tab', handler as EventListener);
+  }, [tailoredResumes]);
 
   const workExperiences = experiences.filter(e => e.type === 'work');
   const projectExperiences = experiences.filter(e => e.type === 'project');

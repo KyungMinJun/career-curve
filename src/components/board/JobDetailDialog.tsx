@@ -49,7 +49,7 @@ interface JobDetailDialogProps {
   job: JobPosting;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onNavigateToCareer?: () => void;
+  onNavigateToCareer?: (tailoredResumeId?: string) => void;
 }
 
 export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }: JobDetailDialogProps) {
@@ -476,9 +476,9 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
         job={job}
         keyCompetencies={keyCompetencyScores}
         experiences={experiences}
-        onNavigateToCareer={() => {
+        onNavigateToCareer={(tailoredResumeId) => {
           onOpenChange(false);
-          onNavigateToCareer?.();
+          onNavigateToCareer?.(tailoredResumeId);
         }}
       />
     </>
