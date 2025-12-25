@@ -22,15 +22,14 @@ interface ResumeBuilderDialogProps {
   job: JobPosting;
   keyCompetencies: KeyCompetency[];
   experiences: Experience[];
-  onNavigateToCareer?: () => void;
+  onNavigateToCareer?: (tailoredResumeId?: string) => void;
 }
 
-type ResumeFormat = 'standard' | 'creative' | 'minimal';
+type ResumeFormat = 'consulting' | 'narrative';
 
 const RESUME_FORMATS: { id: ResumeFormat; name: string; description: string }[] = [
-  { id: 'standard', name: '표준형', description: '전통적인 형식의 이력서' },
-  { id: 'creative', name: '창의형', description: '디자인이 강조된 이력서' },
-  { id: 'minimal', name: '간결형', description: '핵심만 담은 1페이지 이력서' },
+  { id: 'consulting', name: '컨설팅형(외국형)', description: '팔란티어 스타일의 간결한 성과 중심 포맷' },
+  { id: 'narrative', name: '서술형(국문형)', description: '자기소개/서술 중심의 국문 이력서 포맷' },
 ];
 
 function detectLanguage(text: string): 'ko' | 'en' {
@@ -48,12 +47,13 @@ export function ResumeBuilderDialog({
   onNavigateToCareer,
 }: ResumeBuilderDialogProps) {
   const [step, setStep] = useState(1);
-  const [selectedFormat, setSelectedFormat] = useState<ResumeFormat>('standard');
+  const [selectedFormat, setSelectedFormat] = useState<ResumeFormat>('consulting');
   const [selectedExperiences, setSelectedExperiences] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const [rawAIContent, setRawAIContent] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [lastSavedTailoredResumeId, setLastSavedTailoredResumeId] = useState<string | null>(null);
   const { addTailoredResume } = useJobStore();
 
   const workExperiences = useMemo(() => experiences.filter(e => e.type === 'work'), [experiences]);
@@ -66,8 +66,11 @@ export function ResumeBuilderDialog({
       setSelectedExperiences(workIds);
       setStep(1);
       setGeneratedContent(null);
+      setAiFeedback(null);
+      setRawAIContent(null);
       setIsGenerating(false);
       setIsSaved(false);
+      setLastSavedTailoredResumeId(null);
     }
   }, [open, workExperiences]);
 
@@ -114,6 +117,7 @@ export function ResumeBuilderDialog({
 
       setGeneratedContent(data.content);
       setAiFeedback(data.aiFeedback || null);
+      setRawAIContent(data.rawContent || null);
       setStep(3);
       toast.success('맞춤 이력서가 생성되었습니다');
     } catch (error) {
@@ -134,8 +138,9 @@ export function ResumeBuilderDialog({
     if (!generatedContent) return;
 
     const now = new Date();
+    const id = Date.now().toString();
     const newTailoredResume: TailoredResume = {
-      id: Date.now().toString(),
+      id,
       jobPostingId: job.id,
       companyName: job.companyName,
       jobTitle: job.title,
@@ -147,13 +152,14 @@ export function ResumeBuilderDialog({
     };
 
     addTailoredResume(newTailoredResume);
+    setLastSavedTailoredResumeId(id);
     setIsSaved(true);
     toast.success('공고별 이력서가 저장되었습니다');
   };
 
   const handleNavigateToCareer = () => {
     onOpenChange(false);
-    onNavigateToCareer?.();
+    onNavigateToCareer?.(lastSavedTailoredResumeId ?? undefined);
   };
 
   const Step1 = () => (
