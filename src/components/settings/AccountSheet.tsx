@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LogOut, KeyRound, UserCog, UserX, ChevronRight } from 'lucide-react';
 import {
   Sheet,
@@ -16,9 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useJobStore } from '@/stores/jobStore';
 import { toast } from 'sonner';
 import { ProfileEditSheet } from './ProfileEditSheet';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AccountSheetProps {
   open: boolean;
@@ -26,8 +27,17 @@ interface AccountSheetProps {
 }
 
 export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+
+  const handleLogout = async () => {
+    await signOut();
+    toast.success('로그아웃되었습니다');
+    onOpenChange(false);
+    navigate('/auth');
+  };
 
   const menuItems = [
     {
@@ -41,15 +51,24 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
       label: '비밀번호 찾기',
       description: '이메일로 재설정 링크 발송',
       onClick: () => {
-        toast.info('로그인 기능 구현 후 사용 가능합니다');
+        if (!user) {
+          toast.info('로그인 후 사용 가능합니다');
+          return;
+        }
+        toast.info('비밀번호 재설정 기능은 준비 중입니다');
       },
     },
     {
       icon: LogOut,
-      label: '로그아웃',
-      description: '현재 계정에서 로그아웃',
+      label: user ? '로그아웃' : '로그인',
+      description: user ? '현재 계정에서 로그아웃' : '계정에 로그인하세요',
       onClick: () => {
-        toast.info('로그인 기능 구현 후 사용 가능합니다');
+        if (user) {
+          handleLogout();
+        } else {
+          onOpenChange(false);
+          navigate('/auth');
+        }
       },
     },
     {
@@ -61,9 +80,13 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
     },
   ];
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     // Clear all data from localStorage
     localStorage.removeItem('jobflow-storage');
+    // Sign out if logged in
+    if (user) {
+      await signOut();
+    }
     toast.success('모든 데이터가 삭제되었습니다');
     setShowDeleteDialog(false);
     onOpenChange(false);
