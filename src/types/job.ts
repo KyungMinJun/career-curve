@@ -92,6 +92,7 @@ export interface CareerGoal {
   type: 'immediate' | 'short-term' | 'long-term';
   reason: string;
   careerPath?: string;
+  result?: string; // 목표 결과
   searchPeriod?: string; // e.g., "3개월", "6개월"
   companyEvalCriteria: { name: string; weight: number; description?: string }[];
   startDate: Date; // 목표 시작일

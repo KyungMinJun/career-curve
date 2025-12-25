@@ -45,6 +45,14 @@ export function ResumeBuilderDialog({
   const workExperiences = experiences.filter(e => e.type === 'work');
   const projectExperiences = experiences.filter(e => e.type === 'project');
 
+  // Auto-select all work experiences by default
+  useState(() => {
+    const workIds = workExperiences.map(e => e.id);
+    if (workIds.length > 0 && selectedExperiences.length === 0) {
+      setSelectedExperiences(workIds);
+    }
+  });
+
   const toggleExperience = (id: string) => {
     setSelectedExperiences(prev =>
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
@@ -65,6 +73,7 @@ export function ResumeBuilderDialog({
     setIsGenerating(false);
     toast.success('이력서가 생성되었습니다');
     onOpenChange(false);
+    setStep(1);
   };
 
   const renderStep1 = () => (
