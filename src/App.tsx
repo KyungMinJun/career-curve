@@ -50,19 +50,8 @@ function AppWithProviders() {
   // CRITICAL: Each user MUST have their own isolated storage
   const storageKey = user?.id ? `jobflow-storage:${user.id}` : "jobflow-storage:anon";
 
-  // One-time cleanup for legacy shared storage key (pre-fix)
-  useEffect(() => {
-    try {
-      if (user?.id) {
-        const legacyKeys = ["jobflow-storage", "jobflow", "job-store", "zustand-job-store"];
-        legacyKeys.forEach((k) => {
-          if (localStorage.getItem(k)) localStorage.removeItem(k);
-        });
-      }
-    } catch {
-      // ignore
-    }
-  }, [user?.id]);
+  // Note: We no longer delete legacy keys to preserve user data across sessions
+  // Each user has isolated storage via their unique storageKey
 
   return (
     <JobStoreProvider key={storageKey} storageKey={storageKey}>

@@ -27,10 +27,6 @@ interface ResumeBuilderDialogProps {
 
 type ResumeFormat = 'consulting';
 
-const RESUME_FORMATS: { id: ResumeFormat; name: string; description: string }[] = [
-  { id: 'consulting', name: '컨설팅형(외국형)', description: '외국계 표준 포맷(경험 중심, 정돈된 섹션)' },
-];
-
 function detectLanguage(text: string): 'ko' | 'en' {
   const koreanChars = (text.match(/[가-힣]/g) || []).length;
   const englishChars = (text.match(/[a-zA-Z]/g) || []).length;
@@ -45,7 +41,7 @@ export function ResumeBuilderDialog({
   experiences,
   onNavigateToCareer,
 }: ResumeBuilderDialogProps) {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // Now starts at step 1 = experience selection
   const [selectedFormat, setSelectedFormat] = useState<ResumeFormat>('consulting');
   const [selectedExperiences, setSelectedExperiences] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -117,7 +113,7 @@ export function ResumeBuilderDialog({
       setGeneratedContent(data.content);
       setAiFeedback(data.aiFeedback || null);
       setRawAIContent(data.rawContent || null);
-      setStep(3);
+      setStep(2); // Now step 2 is the result
       toast.success('맞춤 이력서가 생성되었습니다');
     } catch (error) {
       console.error('Error generating resume:', error);
@@ -162,45 +158,13 @@ export function ResumeBuilderDialog({
     onNavigateToCareer?.(lastSavedTailoredResumeId ?? undefined);
   };
 
+  // Step1 is now experience selection (removed format selection)
   const Step1 = () => (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        공고에서 요구하는 핵심 역량에 맞는 이력서 형식을 선택하세요.
-      </p>
-
-      <div className="space-y-3">
-        {RESUME_FORMATS.map((format) => (
-          <div
-            key={format.id}
-            className={cn(
-              'border rounded-lg p-4 cursor-pointer transition-colors',
-              selectedFormat === format.id
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50'
-            )}
-            onClick={() => setSelectedFormat(format.id)}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{format.name}</p>
-                <p className="text-sm text-muted-foreground">{format.description}</p>
-              </div>
-              {selectedFormat === format.id && (
-                <CheckCircle2 className="w-5 h-5 text-primary" />
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="bg-secondary/30 rounded-lg p-3 text-sm text-muted-foreground">
+        생성 언어: <span className="font-medium text-foreground">{language === 'ko' ? '국문' : '영문'}</span> (공고 언어 기반)
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        생성 언어: {language === 'ko' ? '국문' : '영문'} (공고 언어 기반)
-      </p>
-    </div>
-  );
-
-  const Step2 = () => (
-    <div className="space-y-4">
+      
       <div className="space-y-2">
         <h4 className="text-sm font-semibold">핵심 역량 기준</h4>
         <p className="text-xs text-muted-foreground">
@@ -253,25 +217,27 @@ export function ResumeBuilderDialog({
     </div>
   );
 
-  const Step3 = () => (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
-            맞춤 이력서 생성 완료
-          </h4>
-          <p className="text-xs text-muted-foreground">
-            {job.companyName} - {job.title} 포지션에 최적화된 이력서입니다.
-          </p>
-        </div>
-
-        <div className="bg-secondary/30 rounded-lg p-4 overflow-x-auto">
-          <pre className="text-sm whitespace-pre font-sans text-foreground">
-            {generatedContent}
-          </pre>
-        </div>
+  // Step2 is now the result view
+  const Step2 = () => (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-primary" />
+          맞춤 이력서 생성 완료
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          {job.companyName} - {job.title} 포지션에 최적화된 이력서입니다.
+        </p>
       </div>
+
+      <div className="bg-secondary/30 rounded-lg p-4 overflow-x-auto">
+        <pre className="text-sm whitespace-pre font-sans text-foreground">
+          {generatedContent}
+        </pre>
+      </div>
+    </div>
   );
+
 
   // Prevent closing during generation
   const handleOpenChange = (open: boolean) => {
@@ -296,56 +262,42 @@ export function ResumeBuilderDialog({
           <div className="flex items-center gap-2 mt-4">
             <div className={cn('flex-1 h-1 rounded-full', step >= 1 ? 'bg-primary' : 'bg-muted')} />
             <div className={cn('flex-1 h-1 rounded-full', step >= 2 ? 'bg-primary' : 'bg-muted')} />
-            <div className={cn('flex-1 h-1 rounded-full', step >= 3 ? 'bg-primary' : 'bg-muted')} />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {step === 1 && <Step1 />}
           {step === 2 && <Step2 />}
-          {step === 3 && <Step3 />}
         </div>
 
         <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
-          {step === 1 && (
-            <Button className="w-full" onClick={() => setStep(2)}>
-              다음: 경험 선택
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          )}
-
-          {step === 2 && (
+          {step === 1 && !generatedContent && (
             <div className="flex flex-col gap-2">
               {isGenerating && (
                 <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center">
                   약 15초 소요됩니다. 중간에 나가면 저장되지 않습니다.
                 </div>
               )}
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setStep(1)} disabled={isGenerating}>
-                  이전
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handleGenerate}
-                  disabled={isGenerating || selectedExperiences.length === 0}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      생성 중...
-                    </>
-                  ) : (
-                    <>
-                      맞춤 이력서 생성
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                className="w-full"
+                onClick={handleGenerate}
+                disabled={isGenerating || selectedExperiences.length === 0}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    맞춤 이력서 생성
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div className="flex flex-col gap-2">
               {!isSaved ? (
                 <>
@@ -363,7 +315,7 @@ export function ResumeBuilderDialog({
                     variant="ghost"
                     className="w-full text-muted-foreground"
                     onClick={() => {
-                      setStep(2);
+                      setStep(1);
                       setGeneratedContent(null);
                     }}
                   >
