@@ -92,7 +92,12 @@ export default function Auth() {
       const formattedPhone = '+82' + formData.phone.slice(1);
       const { error } = await signInWithPhone(formattedPhone);
       if (error) {
-        toast.error(error.message || '인증번호 발송에 실패했습니다');
+        const msg = error.message || '인증번호 발송에 실패했습니다';
+        if (msg.toLowerCase().includes('sms provider') || msg.toLowerCase().includes('unable to get sms provider')) {
+          toast.error('현재 SMS(문자) 인증 발송 설정이 되어있지 않습니다. 잠시 후 다시 시도하거나 이메일 로그인을 사용해주세요.');
+        } else {
+          toast.error(msg);
+        }
       } else {
         setOtpSent(true);
         toast.success('인증번호가 발송되었습니다');

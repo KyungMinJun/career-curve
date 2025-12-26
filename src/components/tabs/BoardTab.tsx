@@ -89,12 +89,12 @@ export function BoardTab() {
       case 'oldest':
         return filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       case 'priority':
-        // fitScore 기반 우선순위 (높을수록 좋음)
+        // 우선순위(낮을수록 좋음) 기반 정렬 + fitScore는 보조 지표로 사용
         return filtered.sort((a, b) => {
+          if (a.priority !== b.priority) return a.priority - b.priority;
           const aScore = a.fitScore ?? 0;
           const bScore = b.fitScore ?? 0;
-          if (bScore !== aScore) return bScore - aScore;
-          return a.priority - b.priority;
+          return bScore - aScore;
         });
       case 'company':
         return filtered.sort((a, b) => koreanFirstCompare(a.companyName, b.companyName));

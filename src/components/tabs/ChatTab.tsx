@@ -251,7 +251,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
                   : 'bg-card border border-border card-shadow'
               )}
             >
-              <p className="text-sm whitespace-pre-wrap">
+              <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                 {message.isProcessing && (
                   <Loader2 className="inline w-4 h-4 mr-2 animate-spin" />
                 )}

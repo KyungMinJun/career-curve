@@ -3,8 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { JobStoreProvider } from "@/stores/jobStore";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Privacy from "./pages/Privacy";
@@ -14,9 +15,12 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+function AppWithProviders() {
+  const { user } = useAuth();
+  const storageKey = user?.id ? `jobflow-storage:${user.id}` : 'jobflow-storage:anon';
+
+  return (
+    <JobStoreProvider storageKey={storageKey}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -34,6 +38,14 @@ const App = () => (
           </ProtectedRoute>
         </BrowserRouter>
       </TooltipProvider>
+    </JobStoreProvider>
+  );
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <AppWithProviders />
     </AuthProvider>
   </QueryClientProvider>
 );

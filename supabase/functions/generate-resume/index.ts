@@ -7,7 +7,7 @@ const corsHeaders = {
 
 interface Experience {
   id: string;
-  type: 'work' | 'project';
+  type: "work" | "project";
   title: string;
   company?: string;
   period?: string;
@@ -20,13 +20,51 @@ interface KeyCompetency {
   description: string;
 }
 
+type ResumeFormat = "consulting" | "narrative";
+
 interface RequestBody {
   jobTitle: string;
   companyName: string;
   jobSummary: string;
   keyCompetencies: KeyCompetency[];
   experiences: Experience[];
-  language: 'ko' | 'en';
+  language: "ko" | "en";
+  format?: ResumeFormat;
+}
+
+function splitAiFeedback(raw: string) {
+  // Preferred markers
+  const FEEDBACK = "===AI_FEEDBACK===";
+  const RESUME = "===RESUME===";
+
+  const feedbackIdx = raw.indexOf(FEEDBACK);
+  const resumeIdx = raw.indexOf(RESUME);
+
+  if (feedbackIdx !== -1 && resumeIdx !== -1 && resumeIdx > feedbackIdx) {
+    const aiFeedback = raw.slice(feedbackIdx + FEEDBACK.length, resumeIdx).trim();
+    const content = raw.slice(resumeIdx + RESUME.length).trim();
+    return { aiFeedback, content };
+  }
+
+  // Fallback: split by localized headers
+  const fallbacks = ["[AI 피드백]", "[AI Feedback]"];
+  for (const header of fallbacks) {
+    const idx = raw.indexOf(header);
+    if (idx !== -1) {
+      const after = raw.slice(idx + header.length).trim();
+      // Try to find first experience header line after feedback
+      const experienceHeaderRegex = /\n\s*\[(경험 제목|Experience Title)\]\s*\n/;
+      const m = after.match(experienceHeaderRegex);
+      if (m && m.index !== undefined) {
+        const aiFeedback = after.slice(0, m.index).trim();
+        const content = after.slice(m.index).trim();
+        return { aiFeedback, content };
+      }
+      return { aiFeedback: after.trim(), content: raw.slice(0, idx).trim() };
+    }
+  }
+
+  return { aiFeedback: "", content: raw.trim() };
 }
 
 serve(async (req) => {
@@ -35,103 +73,135 @@ serve(async (req) => {
   }
 
   try {
-    const { jobTitle, companyName, jobSummary, keyCompetencies, experiences, language }: RequestBody = await req.json();
-    
+    const {
+      jobTitle,
+      companyName,
+      jobSummary,
+      keyCompetencies,
+      experiences,
+      language,
+      format = language === "en" ? "consulting" : "narrative",
+    }: RequestBody = await req.json();
+
     console.log("Generating tailored resume for:", companyName, jobTitle);
-    console.log("Language:", language);
+    console.log("Language:", language, "Format:", format);
     console.log("Experiences count:", experiences.length);
-    console.log("Key competencies:", keyCompetencies.map(k => k.title));
+    console.log("Key competencies:", keyCompetencies.map((k) => k.title));
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = language === 'ko' 
-      ? `당신은 전문 이력서 작성 컨설턴트입니다. 주어진 채용 공고의 핵심 역량에 맞춰 지원자의 경험을 최적화하여 이력서를 작성해주세요.
+    const systemPrompt =
+      language === "ko"
+        ? `당신은 전문 이력서 작성 컨설턴트입니다. 주어진 채용 공고의 핵심 역량에 맞춰 지원자의 경험을 최적화하여 이력서를 작성합니다.
 
-규칙:
-1. 각 경험의 핵심 성과를 공고가 요구하는 역량에 맞게 재구성하세요.
-2. 수치화된 성과가 있다면 강조하세요.
-3. 공고에서 사용하는 키워드를 자연스럽게 포함하세요.
-4. 간결하고 임팩트 있게 작성하세요.
-5. 결과는 한국어로 작성하세요.
-6. 각 역량별로 어떻게 개선했는지 간단한 피드백도 포함해주세요.
-7. 기존 경험 내용을 공고 요구사항에 맞게 보완하고 강화하세요.`
-      : `You are a professional resume consultant. Optimize the candidate's experiences to match the key competencies required by the job posting.
+중요 규칙:
+- 반드시 아래 마커를 그대로 사용해 출력하세요.
+- 마커 밖에는 어떤 텍스트도 출력하지 마세요.
 
-Rules:
-1. Restructure each experience's key achievements to align with the required competencies.
-2. Emphasize quantified achievements when available.
-3. Naturally incorporate keywords used in the job posting.
-4. Write concisely with impact.
-5. Write the result in English.
-6. Include brief feedback on how each competency was improved.
-7. Enhance and strengthen the original experience content to match job requirements.`;
+출력 형식(엄수):
+===AI_FEEDBACK===
+(여기에 역량별 피드백만)
+===RESUME===
+(여기에 이력서 본문만)
 
-    const userPrompt = language === 'ko'
-      ? `## 채용 공고 정보
+추가 규칙:
+- 결과는 한국어로 작성.
+- 이력서 본문에는 AI 피드백/조언 문구를 절대 포함하지 말 것.
+- 형식: ${format === "consulting" ? "컨설팅형(간결, 성과 중심)" : "서술형(국문형, 섹션 구분 명확)"}.`
+        : `You are a professional resume consultant. Optimize the candidate's experiences to match the key competencies required by the job posting.
+
+CRITICAL RULES:
+- You MUST output using the exact markers below.
+- Do NOT output any text outside of the markers.
+
+Output format (STRICT):
+===AI_FEEDBACK===
+(feedback only)
+===RESUME===
+(resume body only)
+
+Additional rules:
+- Write in English.
+- The resume body must NOT contain feedback/advice text.
+- Format: ${format === "consulting" ? "consulting-style (concise, results-driven)" : "narrative-style"}.`;
+
+    const userPrompt =
+      language === "ko"
+        ? `## 채용 공고 정보
 회사: ${companyName}
 포지션: ${jobTitle}
 요약: ${jobSummary}
 
 ## 핵심 요구 역량
-${keyCompetencies.map((k, i) => `${i + 1}. ${k.title}: ${k.description}`).join('\n')}
+${keyCompetencies.map((k, i) => `${i + 1}. ${k.title}: ${k.description}`).join("\n")}
 
 ## 지원자 경험
-${experiences.map((exp, i) => `
-### ${exp.type === 'work' ? '경력' : '프로젝트'} ${i + 1}: ${exp.title}${exp.company ? ` @ ${exp.company}` : ''}
-기간: ${exp.period || '미정'}
+${experiences
+  .map(
+    (exp, i) => `
+### ${exp.type === "work" ? "경력" : "프로젝트"} ${i + 1}: ${exp.title}${exp.company ? ` @ ${exp.company}` : ""}
+기간: ${exp.period || "미정"}
 설명: ${exp.description}
 주요 성과:
-${exp.bullets.map(b => `- ${b}`).join('\n')}
-`).join('\n')}
+${exp.bullets.map((b) => `- ${b}`).join("\n")}
+`
+  )
+  .join("\n")}
 
-위 경험들을 핵심 요구 역량에 맞게 재구성하여 이력서용 텍스트를 생성해주세요.
+요청:
+1) ===AI_FEEDBACK===에는 각 역량별로:
+- 어떤 경험/성과를 근거로 선택했는지
+- 무엇을 어떻게 강화했는지
+- 추가로 어필하면 좋은 포인트
+2) ===RESUME===에는 이력서 본문만 작성.
 
-먼저 [AI 피드백] 섹션에서 각 핵심 역량별로:
-- 기존 경험에서 관련 내용을 어떻게 찾았는지
-- 어떤 부분을 강화/보완했는지
-- 추가로 어필하면 좋을 포인트
-
-그 다음 각 경험마다 다음 형식으로 작성해주세요:
-
+이력서 본문 작성 형식:
+- ${format === "consulting" ? "간결한 섹션(Heading) + Bullet 위주" : "섹션(경력/프로젝트) 구분 + 각 섹션 내 Bullet"}
+- 각 경험은 아래 형식을 따를 것:
 [경험 제목]
 [회사명] | [기간]
-• 최적화된 성과 bullet 1
-• 최적화된 성과 bullet 2
-• 최적화된 성과 bullet 3`
-      : `## Job Posting Information
+• bullet 1
+• bullet 2
+• bullet 3`
+        : `## Job Posting Information
 Company: ${companyName}
 Position: ${jobTitle}
 Summary: ${jobSummary}
 
 ## Key Required Competencies
-${keyCompetencies.map((k, i) => `${i + 1}. ${k.title}: ${k.description}`).join('\n')}
+${keyCompetencies.map((k, i) => `${i + 1}. ${k.title}: ${k.description}`).join("\n")}
 
 ## Candidate's Experience
-${experiences.map((exp, i) => `
-### ${exp.type === 'work' ? 'Work Experience' : 'Project'} ${i + 1}: ${exp.title}${exp.company ? ` @ ${exp.company}` : ''}
-Period: ${exp.period || 'Not specified'}
+${experiences
+  .map(
+    (exp, i) => `
+### ${exp.type === "work" ? "Work Experience" : "Project"} ${i + 1}: ${exp.title}${exp.company ? ` @ ${exp.company}` : ""}
+Period: ${exp.period || "Not specified"}
 Description: ${exp.description}
 Key Achievements:
-${exp.bullets.map(b => `- ${b}`).join('\n')}
-`).join('\n')}
+${exp.bullets.map((b) => `- ${b}`).join("\n")}
+`
+  )
+  .join("\n")}
 
-Please restructure the above experiences to match the key required competencies and generate resume text.
+Request:
+1) In ===AI_FEEDBACK===, for each competency:
+- what evidence you used from the experience
+- what you strengthened
+- what else to highlight
+2) In ===RESUME===, write ONLY the resume body.
 
-First, include an [AI Feedback] section for each key competency:
-- How you found relevant content from existing experiences
-- What aspects were strengthened/enhanced
-- Additional points that could be highlighted
-
-Then for each experience, use the following format:
-
+Resume body format:
+- ${format === "consulting" ? "concise headings + bullets" : "sectioned narrative"}
+- For each experience use:
 [Experience Title]
 [Company Name] | [Period]
-• Optimized achievement bullet 1
-• Optimized achievement bullet 2
-• Optimized achievement bullet 3`;
+• bullet 1
+• bullet 2
+• bullet 3`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -167,15 +237,22 @@ Then for each experience, use the following format:
     }
 
     const data = await response.json();
-    const generatedContent = data.choices?.[0]?.message?.content || "";
+    const rawContent = data.choices?.[0]?.message?.content || "";
+    const { aiFeedback, content } = splitAiFeedback(rawContent);
 
-    console.log("Resume generated successfully");
+    console.log("Resume generated successfully (split):", {
+      aiFeedbackLength: aiFeedback.length,
+      contentLength: content.length,
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
-        content: generatedContent,
+        content,
+        aiFeedback: aiFeedback || null,
+        rawContent,
         language,
+        format,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

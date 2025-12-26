@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import {
   Dialog,
   DialogContent,
@@ -254,23 +254,23 @@ export function ResumeBuilderDialog({
   );
 
   const Step3 = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-primary" />
-          맞춤 이력서 생성 완료
-        </h4>
-        <p className="text-xs text-muted-foreground">
-          {job.companyName} - {job.title} 포지션에 최적화된 이력서입니다.
-        </p>
-      </div>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            맞춤 이력서 생성 완료
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            {job.companyName} - {job.title} 포지션에 최적화된 이력서입니다.
+          </p>
+        </div>
 
-      <div className="bg-secondary/30 rounded-lg p-4">
-        <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
-          {generatedContent}
-        </pre>
+        <div className="bg-secondary/30 rounded-lg p-4 overflow-x-auto">
+          <pre className="text-sm whitespace-pre font-sans text-foreground">
+            {generatedContent}
+          </pre>
+        </div>
       </div>
-    </div>
   );
 
   // Prevent closing during generation
@@ -299,12 +299,11 @@ export function ResumeBuilderDialog({
             <div className={cn('flex-1 h-1 rounded-full', step >= 3 ? 'bg-primary' : 'bg-muted')} />
           </div>
         </div>
-
-        <ScrollArea className="flex-1 px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {step === 1 && <Step1 />}
           {step === 2 && <Step2 />}
           {step === 3 && <Step3 />}
-        </ScrollArea>
+        </div>
 
         <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
           {step === 1 && (
@@ -416,9 +415,9 @@ function ExperienceCheckbox({
           )}
           <ul className="mt-1 space-y-0.5">
             {experience.bullets.slice(0, 2).map((bullet, i) => (
-              <li key={i} className="text-xs text-muted-foreground truncate">
-                • {bullet}
-              </li>
+                <li key={i} className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                  • {bullet}
+                </li>
             ))}
           </ul>
         </div>
