@@ -182,7 +182,7 @@ export default function Auth() {
                     id="nameEn"
                     value={formData.nameEn}
                     onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
-                    placeholder="Minjoo Cho"
+                    placeholder="Gildong Hong"
                     disabled={isSubmitting}
                   />
                   {errors.nameEn && <p className="text-xs text-destructive">{errors.nameEn}</p>}
