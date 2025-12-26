@@ -69,10 +69,21 @@ export function ResumeBuilderDialog({
     }
   }, [open, workExperiences]);
 
-  const toggleExperience = (id: string) => {
+  const toggleExperience = (id: string, e?: React.MouseEvent) => {
+    // Prevent event propagation to avoid dialog closing
+    e?.stopPropagation();
+    e?.preventDefault();
     setSelectedExperiences(prev =>
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     );
+  };
+
+  const selectAllExperiences = () => {
+    setSelectedExperiences(experiences.map(e => e.id));
+  };
+
+  const deselectAllExperiences = () => {
+    setSelectedExperiences([]);
   };
 
   const language = useMemo(() => {
@@ -179,6 +190,36 @@ export function ResumeBuilderDialog({
         </div>
       </div>
 
+      {/* Select All / Deselect All */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="flex-1"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectAllExperiences();
+          }}
+        >
+          모두 선택
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="flex-1"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            deselectAllExperiences();
+          }}
+        >
+          모두 해제
+        </Button>
+      </div>
+
       <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
         {workExperiences.length > 0 && (
           <div className="space-y-2">
@@ -188,7 +229,7 @@ export function ResumeBuilderDialog({
                 key={exp.id}
                 experience={exp}
                 checked={selectedExperiences.includes(exp.id)}
-                onToggle={() => toggleExperience(exp.id)}
+                onToggle={(e) => toggleExperience(exp.id, e)}
               />
             ))}
           </div>
@@ -202,7 +243,7 @@ export function ResumeBuilderDialog({
                 key={exp.id}
                 experience={exp}
                 checked={selectedExperiences.includes(exp.id)}
-                onToggle={() => toggleExperience(exp.id)}
+                onToggle={(e) => toggleExperience(exp.id, e)}
               />
             ))}
           </div>
@@ -348,18 +389,32 @@ function ExperienceCheckbox({
 }: {
   experience: Experience;
   checked: boolean;
-  onToggle: () => void;
+  onToggle: (e?: React.MouseEvent) => void;
 }) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggle(e);
+  };
+
   return (
     <div
       className={cn(
         'border rounded-lg p-3 cursor-pointer transition-colors',
         checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
       )}
-      onClick={onToggle}
+      onClick={handleClick}
     >
       <div className="flex items-start gap-3">
-        <Checkbox checked={checked} className="mt-1" />
+        <Checkbox 
+          checked={checked} 
+          className="mt-1" 
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(e);
+          }}
+          onCheckedChange={() => {}}
+        />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm">{experience.title}</p>
           {experience.company && (

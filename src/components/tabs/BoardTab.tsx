@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { LayoutGrid, Table2, Filter, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { LayoutGrid, Table2, Filter, ArrowUpDown, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,18 @@ const STATUS_ORDER: JobStatus[] = [
   'accepted',
   'rejected-docs',
   'rejected-interview',
+  'closed',
+];
+
+// Display order for select dropdown (different from kanban order)
+const STATUS_SELECT_ORDER: JobStatus[] = [
+  'reviewing',
+  'applied',
+  'interview',
+  'offer',
+  'rejected-docs',
+  'rejected-interview',
+  'accepted',
   'closed',
 ];
 
@@ -324,6 +336,9 @@ function KanbanView({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<JobStatus | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   const selectedJob = useJobStore((s) => (selectedJobId ? s.jobPostings.find((j) => j.id === selectedJobId) ?? null : null));
 
@@ -358,12 +373,55 @@ function KanbanView({
     setDraggedJobId(null);
   };
 
+  const updateScrollButtons = () => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      setCanScrollLeft(container.scrollLeft > 10);
+      setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
+    }
+  };
+
+  const scrollLeft = () => {
+    scrollContainerRef.current?.scrollBy({ left: -288, behavior: 'smooth' });
+  };
+
+  const scrollRight = () => {
+    scrollContainerRef.current?.scrollBy({ left: 288, behavior: 'smooth' });
+  };
+
   // Statuses to show in main view (excluding closed and rejected)
   const mainStatuses = STATUS_ORDER.filter((status) => !status.startsWith('rejected') && status !== 'closed');
 
   return (
     <>
-      <div className="h-full overflow-x-auto scrollbar-hide">
+      <div className="relative h-full">
+        {/* Left scroll arrow */}
+        {canScrollLeft && (
+          <button
+            onClick={scrollLeft}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-secondary transition-colors"
+            aria-label="왼쪽으로 스크롤"
+          >
+            <ChevronLeft className="w-5 h-5 text-foreground" />
+          </button>
+        )}
+        
+        {/* Right scroll arrow */}
+        {canScrollRight && (
+          <button
+            onClick={scrollRight}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-secondary transition-colors"
+            aria-label="오른쪽으로 스크롤"
+          >
+            <ChevronRight className="w-5 h-5 text-foreground" />
+          </button>
+        )}
+
+        <div 
+          ref={scrollContainerRef}
+          className="h-full overflow-x-auto scrollbar-hide"
+          onScroll={updateScrollButtons}
+        >
         <div className="flex flex-col gap-4 px-4 h-full pb-4">
           {/* Main columns */}
           <div className="flex gap-4 min-w-max">
@@ -475,6 +533,7 @@ function KanbanView({
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
 

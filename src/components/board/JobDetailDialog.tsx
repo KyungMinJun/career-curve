@@ -291,9 +291,10 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                      {/* Status order: 지원검토 → 서류지원 → 인터뷰 → 오퍼 → 불합격-서류 → 불합격-인터뷰 → 합격-최종 → 공고마감 */}
+                      {(['reviewing', 'applied', 'interview', 'offer', 'rejected-docs', 'rejected-interview', 'accepted', 'closed'] as JobStatus[]).map((key) => (
                         <SelectItem key={key} value={key}>
-                          <Badge className={cn('text-xs', STATUS_COLORS[key as JobStatus])}>{label}</Badge>
+                          <Badge className={cn('text-xs', STATUS_COLORS[key])}>{STATUS_LABELS[key]}</Badge>
                         </SelectItem>
                       ))}
                     </SelectContent>
