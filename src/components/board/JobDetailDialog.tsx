@@ -285,6 +285,23 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-foreground">핵심 역량 (채용담당자 관점)</h3>
                   </div>
+
+                  {/* 종합 피드백 - 평가 결과가 있을 때만 표시 */}
+                  {fitAvg > 0 && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                      <h4 className="text-xs font-semibold text-primary mb-1">종합 피드백</h4>
+                      <p className="text-sm text-foreground leading-relaxed">
+                        {fitAvg >= 4 ? (
+                          <>적합한 경험을 보유하고 있습니다. 핵심 역량과 잘 맞는 경험을 강조하여 지원하시면 좋겠습니다.</>
+                        ) : fitAvg >= 3 ? (
+                          <>일부 역량에서 적합한 경험이 있습니다. 부족한 역량은 관련 프로젝트나 학습 경험으로 보완하여 어필하세요.</>
+                        ) : (
+                          <>핵심 역량과의 매칭이 다소 부족합니다. 지원 시 전이 가능한 기술이나 빠른 학습 능력을 강조해 보세요.</>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
                   <p className="text-xs text-muted-foreground">AI가 추출한 5가지 핵심 역량입니다. 아래 버튼으로 내 경험 기반 적합도를 자동 평가하거나, 직접 점수를 입력하세요.</p>
                   
                   {/* AI Evaluation Button */}

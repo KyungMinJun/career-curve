@@ -25,11 +25,10 @@ interface ResumeBuilderDialogProps {
   onNavigateToCareer?: (tailoredResumeId?: string) => void;
 }
 
-type ResumeFormat = 'consulting' | 'narrative';
+type ResumeFormat = 'consulting';
 
 const RESUME_FORMATS: { id: ResumeFormat; name: string; description: string }[] = [
   { id: 'consulting', name: '컨설팅형(외국형)', description: '외국계 표준 포맷(경험 중심, 정돈된 섹션)' },
-  { id: 'narrative', name: '서술형(설명형)', description: '경력 설명 + Selected Projects가 포함된 포맷' },
 ];
 
 function detectLanguage(text: string): 'ko' | 'en' {

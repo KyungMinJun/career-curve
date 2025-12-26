@@ -78,15 +78,18 @@ export function GoalsTab() {
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [pendingNewGoal, setPendingNewGoal] = useState<CareerGoal | null>(null);
 
   // Filter out goals that have endDate (they should be archived)
   const activeGoals = currentGoals.filter((g) => !isGoalEnded(g));
 
   const handleAddNewGoal = () => {
     const newGoal = createBlankGoal();
-    addGoal(newGoal);
+    // 먼저 편집 다이얼로그를 열어 사용자가 저장하면 추가
     setEditingGoalId(newGoal.id);
     setIsAddingNew(true);
+    // 바로 추가하지 않고 임시로 저장 - 저장 시에 addGoal 호출
+    setPendingNewGoal(newGoal);
   };
 
   const handleArchiveGoal = (goal: CareerGoal) => {
@@ -326,20 +329,32 @@ export function GoalsTab() {
           open={!!editingGoalId}
           onOpenChange={(open) => {
             if (!open) {
-              // If adding new and cancelled without content, remove it
+              // If adding new and cancelled, just clear
               if (isAddingNew) {
-                const editingGoal = currentGoals.find((g) => g.id === editingGoalId);
-                if (editingGoal && !hasGoalContent(editingGoal)) {
-                  removeGoal(editingGoalId);
-                }
+                setPendingNewGoal(null);
               }
               setEditingGoalId(null);
               setIsAddingNew(false);
             }
           }}
-          goal={currentGoals.find((g) => g.id === editingGoalId)!}
+          goal={pendingNewGoal && pendingNewGoal.id === editingGoalId ? pendingNewGoal : currentGoals.find((g) => g.id === editingGoalId)!}
           onSave={(newGoal) => {
-            // 종료일이 입력되면 자동으로 "이전 기록"으로 이동
+            // 새 목표 추가인 경우
+            if (isAddingNew && pendingNewGoal) {
+              // 종료일이 입력되면 자동으로 "이전 기록"으로 이동
+              if (newGoal.endDate) {
+                archiveGoal(newGoal);
+                setHistoryOpen(true);
+              } else {
+                addGoal(newGoal);
+              }
+              setPendingNewGoal(null);
+              setEditingGoalId(null);
+              setIsAddingNew(false);
+              return;
+            }
+
+            // 기존 목표 수정인 경우
             if (newGoal.endDate) {
               archiveGoal(newGoal);
               removeGoal(newGoal.id);

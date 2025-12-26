@@ -227,7 +227,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="px-4 pb-4 bg-background safe-top-lg">
+      <header className="px-4 pb-2 bg-background safe-top-lg shrink-0">
         <div className="flex items-center gap-2">
           <img src={logoImage} alt="Logo" className="w-6 h-6 object-contain" />
           <h1 className="text-xl font-bold text-foreground">채팅</h1>
@@ -238,7 +238,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 scrollbar-hide min-h-0">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -249,7 +249,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
           >
             <div
               className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-2.5',
+                'max-w-[80%] rounded-2xl px-4 py-2',
                 message.type === 'user'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card border border-border card-shadow'
@@ -281,7 +281,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-4 pb-20 pt-2 border-t border-border bg-background">
+      <form onSubmit={handleSubmit} className="px-4 pb-20 pt-2 border-t border-border bg-background shrink-0">
         <div className="flex gap-2 items-center">
           <input
             ref={inputRef}
@@ -289,12 +289,12 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="공고 링크를 붙여넣거나 질문하세요"
-            className="flex-1 bg-secondary rounded-full px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="flex-1 bg-secondary rounded-full px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <Button
             type="submit"
             size="icon"
-            className="rounded-full w-10 h-10 shrink-0"
+            className="rounded-full w-9 h-9 shrink-0"
             disabled={!inputValue.trim()}
           >
             <Send className="w-4 h-4" />
