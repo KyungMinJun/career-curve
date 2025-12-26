@@ -55,7 +55,9 @@ export function TableView({ jobs }: TableViewProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+
+  const selectedJob = useJobStore((s) => (selectedJobId ? s.jobPostings.find((j) => j.id === selectedJobId) ?? null : null));
 
   const filteredJobs = jobs
     .filter((job) => statusFilter === 'all' || job.status === statusFilter)
@@ -313,7 +315,7 @@ export function TableView({ jobs }: TableViewProps) {
                 key={job.id}
                 className="grid gap-2 px-4 py-3 items-center hover:bg-secondary/30 cursor-pointer transition-colors min-w-max"
                 style={{ gridTemplateColumns: visibleColumns.map(() => 'minmax(80px, 1fr)').join(' ') }}
-                onClick={() => setSelectedJob(job)}
+                onClick={() => setSelectedJobId(job.id)}
               >
                 {visibleColumns.map((col) => (
                   <div key={col.key} className="min-w-0">
@@ -332,11 +334,11 @@ export function TableView({ jobs }: TableViewProps) {
         </div>
       </div>
 
-      {selectedJob && (
+       {selectedJob && (
         <JobDetailDialog
           job={selectedJob}
           open={!!selectedJob}
-          onOpenChange={(open) => !open && setSelectedJob(null)}
+          onOpenChange={(open) => !open && setSelectedJobId(null)}
         />
       )}
     </div>

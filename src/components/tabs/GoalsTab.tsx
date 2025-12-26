@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useJobStore } from '@/stores/jobStore';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   Dialog,
   DialogContent,
@@ -87,14 +88,10 @@ export function GoalsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">커리어 목표</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              목표를 정하고 기록하세요
-            </p>
-          </div>
+      <PageHeader
+        title="커리어 목표"
+        subtitle="목표를 정하고 기록하세요"
+        right={
           <Button
             variant="default"
             size="sm"
@@ -110,8 +107,8 @@ export function GoalsTab() {
             <Target className="w-4 h-4 mr-2" />
             새 목표
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide">
         {/* Current Goal Card */}

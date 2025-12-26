@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useJobStore } from '@/stores/jobStore';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   Dialog,
   DialogContent,
@@ -275,12 +276,7 @@ export function CareerTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
-        <h1 className="text-xl font-bold text-foreground">경력</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          이력서와 경험을 관리하세요
-        </p>
-      </header>
+      <PageHeader title="경력" subtitle="이력서와 경험을 관리하세요" />
 
       <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide">
         {/* Resumes Section */}

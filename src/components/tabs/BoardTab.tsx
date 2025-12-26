@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { LayoutGrid, Table2, Filter, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
+import logoImage from '@/assets/logo.png';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useJobStore } from '@/stores/jobStore';
@@ -128,7 +129,10 @@ export function BoardTab() {
       {/* Header */}
       <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-foreground">보드</h1>
+          <div className="flex items-center gap-2">
+            <img src={logoImage} alt="커브 로고" className="w-6 h-6 object-contain" loading="eager" />
+            <h1 className="text-xl font-bold text-foreground">공고 관리 보드</h1>
+          </div>
           
           <div className="flex items-center gap-2">
             {/* Filter - 경력/근무형태/위치 기준 */}
@@ -291,9 +295,11 @@ function KanbanView({
   onDropOnColumn: (jobId: string, newStatus: JobStatus) => void;
 }) {
   const [showClosed, setShowClosed] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<JobStatus | null>(null);
+
+  const selectedJob = useJobStore((s) => (selectedJobId ? s.jobPostings.find((j) => j.id === selectedJobId) ?? null : null));
 
   const handleDragStart = (e: React.DragEvent, jobId: string) => {
     setDraggedJobId(jobId);
@@ -377,10 +383,10 @@ function KanbanView({
                         draggedJobId === job.id && "opacity-50"
                       )}
                     >
-                      <JobCard 
-                        job={job} 
-                        onClick={() => setSelectedJob(job)}
-                      />
+                        <JobCard 
+                          job={job} 
+                          onClick={() => setSelectedJobId(job.id)}
+                        />
                     </div>
                   ))}
                   {groupedByStatus[status]?.length === 0 && (
@@ -434,7 +440,7 @@ function KanbanView({
                       >
                         <JobCard 
                           job={job} 
-                          onClick={() => setSelectedJob(job)}
+                          onClick={() => setSelectedJobId(job.id)}
                         />
                       </div>
                     ))}
@@ -451,9 +457,9 @@ function KanbanView({
         <JobDetailDialog
           job={selectedJob}
           open={!!selectedJob}
-          onOpenChange={(open) => !open && setSelectedJob(null)}
+          onOpenChange={(open) => !open && setSelectedJobId(null)}
           onNavigateToCareer={(tailoredResumeId) => {
-            setSelectedJob(null);
+            setSelectedJobId(null);
             // Navigate to career tab - will be handled by parent component
             window.dispatchEvent(
               new CustomEvent('navigate-to-tab', {

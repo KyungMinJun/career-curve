@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, ChevronRight, FileText, Shield } from 'lucide-react';
 import { useJobStore } from '@/stores/jobStore';
 import { AccountSheet } from '@/components/settings/AccountSheet';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export function SettingsTab() {
   const navigate = useNavigate();
@@ -18,12 +19,13 @@ export function SettingsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
-        <h1 className="text-xl font-bold text-foreground">설정</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          이직 여정을 한 번에 돌아봅니다
-        </p>
-      </header>
+      <PageHeader
+        title="설정"
+        subtitle="이직 여정을 한 번에 돌아봅니다"
+        logoSize="lg"
+        className="pb-5"
+        titleClassName="text-2xl"
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide">
         {/* Summary Card */}
