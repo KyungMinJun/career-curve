@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import {
   Sheet,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useJobStore } from '@/stores/jobStore';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ProfileEditSheetProps {
@@ -20,6 +21,16 @@ interface ProfileEditSheetProps {
 export function ProfileEditSheet({ open, onOpenChange }: ProfileEditSheetProps) {
   const { userName, setUserName } = useJobStore();
   const [name, setName] = useState(userName);
+  const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    // Fetch current user email when sheet opens
+    if (open) {
+      supabase.auth.getUser().then(({ data }) => {
+        setEmail(data.user?.email || '');
+      });
+    }
+  }, [open]);
 
   const handleSave = () => {
     if (name.trim()) {
@@ -57,12 +68,12 @@ export function ProfileEditSheet({ open, onOpenChange }: ProfileEditSheetProps) 
             <Input
               id="userEmail"
               type="email"
+              value={email}
               disabled
-              placeholder="로그인 후 표시됩니다"
               className="bg-muted"
             />
             <p className="text-xs text-muted-foreground">
-              이메일은 로그인 후 변경할 수 있습니다
+              이메일은 계정 설정에서 변경할 수 없습니다
             </p>
           </div>
 

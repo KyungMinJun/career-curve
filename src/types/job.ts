@@ -22,6 +22,7 @@ export interface KeyCompetency {
 export interface CompanyCriteriaScore {
   name: string;
   weight: number;
+  description?: string; // 세부 설명
   score?: number; // 1-5
 }
 

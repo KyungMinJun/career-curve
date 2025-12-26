@@ -281,7 +281,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-4 pb-20 pt-2 border-t border-border bg-background shrink-0">
+      <form onSubmit={handleSubmit} className="px-4 pb-24 pt-2 border-t border-border bg-background shrink-0">
         <div className="flex gap-2 items-center">
           <input
             ref={inputRef}

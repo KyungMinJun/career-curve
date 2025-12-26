@@ -54,19 +54,31 @@ interface JobDetailDialogProps {
 }
 
 export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }: JobDetailDialogProps) {
-  const { updateJobPosting, currentGoal, experiences } = useJobStore();
+  const { updateJobPosting, currentGoals, experiences } = useJobStore();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isResumeBuilderOpen, setIsResumeBuilderOpen] = useState(false);
   const [editingEvaluation, setEditingEvaluation] = useState<number | null>(null);
   const [editEvalText, setEditEvalText] = useState('');
   
-  // Initialize company criteria scores from goal or job
+  // Initialize company criteria scores from goals or job
+  // Merge criteria from all active goals (no endDate), deduped by name
   const [companyCriteriaScores, setCompanyCriteriaScores] = useState<CompanyCriteriaScore[]>(() => {
     if (job.companyCriteriaScores?.length) {
       return job.companyCriteriaScores;
     }
-    return currentGoal?.companyEvalCriteria.map(c => ({ ...c, score: undefined })) || [];
+    const activeGoals = currentGoals.filter((g) => !g.endDate);
+    if (activeGoals.length === 0) return [];
+    // Merge criteria from all goals, dedup by name (take first occurrence)
+    const criteriaMap = new Map<string, { name: string; weight: number; description?: string }>();
+    activeGoals.forEach((goal) => {
+      goal.companyEvalCriteria.forEach((c) => {
+        if (!criteriaMap.has(c.name)) {
+          criteriaMap.set(c.name, c);
+        }
+      });
+    });
+    return Array.from(criteriaMap.values()).map((c) => ({ ...c, score: undefined }));
   });
 
   // Key competency scores (for fit score)
@@ -468,16 +480,28 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 pt-4">
-                  <p className="text-xs text-muted-foreground">목표 탭에서 설정한 5가지 기준으로 회사를 평가하세요. 같은 별을 다시 누르면 0점으로 초기화됩니다.</p>
-                  {companyCriteriaScores.map((criteria, index) => (
-                    <div key={index} className="bg-secondary/30 rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{criteria.name}</span>
-                        <Badge variant="outline" className="text-xs">가중치 {criteria.weight}</Badge>
-                      </div>
-                      {renderStarRating(criteria.score || 0, (v) => handleCompanyCriteriaScoreChange(index, v), 'sm', true)}
+                  {companyCriteriaScores.length === 0 ? (
+                    <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 text-center">
+                      <p className="text-sm font-medium text-warning">회사 평가 기준 없음</p>
+                      <p className="text-xs text-muted-foreground mt-1">이직 목표를 먼저 수립해주세요.</p>
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">목표 탭에서 설정한 5가지 기준으로 회사를 평가하세요. 같은 별을 다시 누르면 0점으로 초기화됩니다.</p>
+                      {companyCriteriaScores.map((criteria, index) => (
+                        <div key={index} className="bg-secondary/30 rounded-lg p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{criteria.name}</span>
+                            <Badge variant="outline" className="text-xs">가중치 {criteria.weight}</Badge>
+                          </div>
+                          {criteria.description && (
+                            <p className="text-xs text-muted-foreground">{criteria.description}</p>
+                          )}
+                          {renderStarRating(criteria.score || 0, (v) => handleCompanyCriteriaScoreChange(index, v), 'sm', true)}
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </CollapsibleContent>
               </Collapsible>
 
