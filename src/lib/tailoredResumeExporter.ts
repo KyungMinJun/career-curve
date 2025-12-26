@@ -21,9 +21,32 @@ interface ResumeItem {
   bullets: string[];
 }
 
+// Remove emojis from text
+function removeEmojis(text: string): string {
+  // Remove common emojis and special symbols
+  return text
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc symbols
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport
+    .replace(/[\u{1F700}-\u{1F77F}]/gu, '') // Alchemical
+    .replace(/[\u{1F780}-\u{1F7FF}]/gu, '') // Geometric
+    .replace(/[\u{1F800}-\u{1F8FF}]/gu, '') // Arrows
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '') // Chess
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation selectors
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags
+    .replace(/[⚠️✓✔✗✘★☆●○◆◇▲△▼▽►◄→←↑↓⇒⇐⇑⇓]/g, '') // Common symbols
+    .replace(/[❌✅⭐🔥💡📌📍🎯🚀💼📊📈📉🏆🎉🔑]/gu, '') // Common emojis
+    .trim();
+}
+
 // Parse AI-generated resume content into structured sections
 function parseResumeContent(content: string): ResumeSection[] {
-  const lines = content.split('\n').filter(line => line.trim());
+  const cleanedContent = removeEmojis(content);
+  const lines = cleanedContent.split('\n').filter(line => line.trim());
   const sections: ResumeSection[] = [];
   let currentSection: ResumeSection | null = null;
   let currentItem: ResumeItem | null = null;
@@ -135,18 +158,18 @@ export function formatResumeForPreviewConsulting(content: string, userName: stri
   for (const section of sections) {
     if (section.type === 'header') continue;
     
-    // Section title with underline
+    // Section title with line
     if (section.title) {
       lines.push('');
-      lines.push(`━━━ ${section.title.toUpperCase()} ━━━`);
+      lines.push(`--- ${section.title.toUpperCase()} ---`);
       lines.push('');
     }
     
     for (const item of section.items) {
       // Company/Position line
       if (item.title) {
-        const titleLine = [item.title, item.subtitle, item.location].filter(Boolean).join('  ·  ');
-        lines.push(`▎ ${titleLine}`);
+        const titleLine = [item.title, item.subtitle, item.location].filter(Boolean).join('  |  ');
+        lines.push(titleLine);
       }
       if (item.period) {
         lines.push(`   ${item.period}`);
@@ -157,7 +180,7 @@ export function formatResumeForPreviewConsulting(content: string, userName: stri
       
       // Bullets with proper indentation
       for (const bullet of item.bullets) {
-        lines.push(`   • ${bullet}`);
+        lines.push(`   - ${removeEmojis(bullet)}`);
       }
       lines.push('');
     }
@@ -166,20 +189,20 @@ export function formatResumeForPreviewConsulting(content: string, userName: stri
   return lines.join('\n');
 }
 
-// Format resume for preview - Narrative style (Korean/서술형)
+// Format resume for preview - Narrative style (Korean style)
 export function formatResumeForPreviewNarrative(content: string, userName: string, coverLetter?: string): string {
   const sections = parseResumeContent(content);
   const lines: string[] = [];
   
   // Header
-  lines.push(`【 ${userName} 】`);
+  lines.push(`[ ${userName} ]`);
   lines.push('');
   
   // Cover letter / introduction if provided
   if (coverLetter) {
-    lines.push('─'.repeat(40));
+    lines.push('-'.repeat(40));
     lines.push(coverLetter);
-    lines.push('─'.repeat(40));
+    lines.push('-'.repeat(40));
     lines.push('');
   }
   
@@ -189,14 +212,14 @@ export function formatResumeForPreviewNarrative(content: string, userName: strin
     // Section title
     if (section.title) {
       lines.push('');
-      lines.push(`■ ${section.title}`);
+      lines.push(`[${section.title}]`);
       lines.push('');
     }
     
     for (const item of section.items) {
       // Company header
       if (item.title) {
-        lines.push(`▶ ${item.title}`);
+        lines.push(item.title);
       }
       if (item.subtitle || item.period) {
         const subInfo = [item.subtitle, item.period].filter(Boolean).join(' | ');
@@ -210,7 +233,7 @@ export function formatResumeForPreviewNarrative(content: string, userName: strin
       
       // Bullets as narrative points
       for (const bullet of item.bullets) {
-        lines.push(`   · ${bullet}`);
+        lines.push(`   - ${removeEmojis(bullet)}`);
       }
       lines.push('');
     }

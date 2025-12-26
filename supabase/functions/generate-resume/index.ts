@@ -18,6 +18,13 @@ interface Experience {
 interface KeyCompetency {
   title: string;
   description: string;
+  score?: number; // User's self-assessment 1-5
+  evaluation?: string; // AI evaluation of user's fit
+}
+
+interface MinimumRequirementsCheck {
+  experienceMet: '충족' | '미충족' | '판단 불가';
+  reason: string;
 }
 
 type ResumeFormat = "consulting" | "narrative";
@@ -30,6 +37,8 @@ interface RequestBody {
   experiences: Experience[];
   language: "ko" | "en";
   format?: ResumeFormat;
+  // AI 적합도 평가 결과
+  minimumRequirementsCheck?: MinimumRequirementsCheck;
 }
 
 function splitAiFeedback(raw: string) {
@@ -81,25 +90,60 @@ serve(async (req) => {
       experiences,
       language,
       format = language === "en" ? "consulting" : "narrative",
+      minimumRequirementsCheck,
     }: RequestBody = await req.json();
 
     console.log("Generating tailored resume for:", companyName, jobTitle);
     console.log("Language:", language, "Format:", format);
     console.log("Experiences count:", experiences.length);
     console.log("Key competencies:", keyCompetencies.map((k) => k.title));
+    console.log("Minimum requirements check:", minimumRequirementsCheck);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Build competency evaluation section for prompt
+    const competencyEvaluationSection = keyCompetencies
+      .map((k, i) => {
+        const scoreText = k.score !== undefined ? `(본인 평가: ${k.score}점/5점)` : '';
+        const evalText = k.evaluation ? `\n   - AI 분석: ${k.evaluation}` : '';
+        return `${i + 1}. ${k.title}: ${k.description} ${scoreText}${evalText}`;
+      })
+      .join("\n");
+
+    // Build minimum requirements section
+    const minReqSection = minimumRequirementsCheck
+      ? `## 최소 자격 요건 검토 결과
+- 경력 요건: ${minimumRequirementsCheck.experienceMet}
+- 사유: ${minimumRequirementsCheck.reason}
+`
+      : '';
+
+    // Identify weak and strong competencies
+    const weakCompetencies = keyCompetencies.filter(k => k.score !== undefined && k.score <= 2);
+    const strongCompetencies = keyCompetencies.filter(k => k.score !== undefined && k.score >= 4);
+
     const systemPrompt =
       language === "ko"
         ? `당신은 채용 담당자 관점까지 포함한 전문 이력서 작성 컨설턴트입니다. 주어진 채용 공고의 핵심 역량에 맞춰 지원자의 경험을 최적화하여 이력서를 작성합니다.
 
+## 핵심 지시사항 (반드시 따를 것)
+당신은 AI 적합도 평가 결과를 기반으로 이력서를 최적화해야 합니다:
+
+1. **경험 순서 최적화**: 점수가 높은 역량(4-5점)과 관련된 경험을 이력서 상단에 배치하세요.
+2. **약한 역량 보완**: 점수가 낮은 역량(1-2점)에 대해서는:
+   - 관련 경험이 있다면 해당 부분을 더 강조해서 작성
+   - 관련 경험이 부족하다면 유사한 경험에서 전이 가능한 스킬을 강조
+3. **강한 역량 극대화**: 점수가 높은 역량은 구체적인 성과와 숫자를 포함하여 더욱 부각
+4. **AI 분석 반영**: 각 역량에 대한 AI 분석 내용이 있다면 이를 참고하여 해당 경험 작성 시 반영
+5. **최소 요건 미충족 시**: 최소 자격 요건이 미충족인 경우, 빠른 학습 능력/적응력/열정 등을 보여주는 경험을 강조
+
 중요 규칙:
 - 반드시 아래 마커를 그대로 사용해 출력하세요.
 - 마커 밖에는 어떤 텍스트도 출력하지 마세요.
+- 이력서 본문에 이모지를 절대 사용하지 마세요.
 
 출력 형식(엄수):
 ===AI_FEEDBACK===
@@ -114,17 +158,29 @@ AI_FEEDBACK 작성 규칙(엄수):
 - 종합의견에는: 적합해 보이는 점 / 아쉬운 점 / 어떤 내용을 중심으로 보완했는지 를 간결하게 정리
 - 세부 수정 의견에는: 수정 포인트를 항목별로 제시(가능하면 원문 대비 변경 이유 포함)
 - 절대 없는 사실을 만들어내지 말 것(경험/성과 과장 금지)
-- 과장/왜곡 가능성이 있는 문장은 세부 수정 의견에 "⚠︎ 확인 필요"로 표시
 
 RESUME 작성 규칙:
 - 결과는 한국어로 작성.
 - 이력서 본문에는 AI 피드백/조언 문구를 절대 포함하지 말 것.
+- 이력서 본문에 이모지를 절대 사용하지 마세요 (예: ⚠, ✓, ★ 등 금지).
 - 형식: ${format === "consulting" ? "컨설팅형(간결, 성과 중심)" : "서술형(국문형, 섹션 구분 명확)"}.`
         : `You are a professional resume consultant with a recruiter mindset. Optimize the candidate's experiences to match the key competencies required by the job posting.
+
+## CRITICAL INSTRUCTIONS (Must Follow)
+You must optimize the resume based on the AI fit evaluation results:
+
+1. **Experience Order Optimization**: Place experiences related to high-scoring competencies (4-5 points) at the top.
+2. **Weak Competency Compensation**: For low-scoring competencies (1-2 points):
+   - If related experience exists, emphasize those parts more
+   - If lacking experience, highlight transferable skills from similar experiences
+3. **Strong Competency Maximization**: Highlight high-scoring competencies with specific achievements and numbers
+4. **Reflect AI Analysis**: If AI analysis exists for each competency, incorporate it when writing relevant experiences
+5. **If Minimum Requirements Not Met**: Emphasize experiences showing quick learning ability/adaptability/passion
 
 CRITICAL RULES:
 - You MUST output using the exact markers below.
 - Do NOT output any text outside of the markers.
+- Do NOT use emojis in the resume body.
 
 Output format (STRICT):
 ===AI_FEEDBACK===
@@ -139,11 +195,11 @@ AI_FEEDBACK rules (STRICT):
 - Overall Assessment: strengths, gaps, what you improved and why
 - Detailed Revision Notes: itemized edits with rationale
 - Never invent facts; no exaggeration
-- Mark any potentially unverifiable claim with "⚠︎ Verify"
 
 Additional rules:
 - Write in English.
 - The resume body must NOT contain feedback/advice text.
+- Do NOT use emojis in the resume body (e.g., no ⚠, ✓, ★, etc.).
 - Format: ${format === "consulting" ? "consulting-style (concise, results-driven)" : "narrative-style"}.`;
 
     const userPrompt =
@@ -153,9 +209,16 @@ Additional rules:
 포지션: ${jobTitle}
 요약: ${jobSummary}
 
-## 핵심 요구 역량
-${keyCompetencies.map((k, i) => `${i + 1}. ${k.title}: ${k.description}`).join("\n")}
+${minReqSection}
+## 핵심 요구 역량 (AI 적합도 평가 포함)
+${competencyEvaluationSection}
 
+${weakCompetencies.length > 0 ? `## 보완이 필요한 역량 (낮은 점수)
+${weakCompetencies.map(k => `- ${k.title} (${k.score}점): ${k.evaluation || '관련 경험 부족'}`).join("\n")}
+` : ''}
+${strongCompetencies.length > 0 ? `## 강점 역량 (높은 점수)
+${strongCompetencies.map(k => `- ${k.title} (${k.score}점): ${k.evaluation || '관련 경험 풍부'}`).join("\n")}
+` : ''}
 ## 지원자 경험
 ${experiences
   .map(
@@ -170,10 +233,10 @@ ${exp.bullets.map((b) => `- ${b}`).join("\n")}
   .join("\n")}
 
 요청:
-1) ===AI_FEEDBACK===에는 각 역량별로:
-- 어떤 경험/성과를 근거로 선택했는지
-- 무엇을 어떻게 강화했는지
-- 추가로 어필하면 좋은 포인트
+1) ===AI_FEEDBACK===에는:
+- 약한 역량을 어떻게 보완했는지
+- 강한 역량을 어떻게 부각했는지
+- 경험 순서를 어떻게 최적화했는지
 2) ===RESUME===에는 이력서 본문만 작성.
 
 이력서 본문 작성 형식:
@@ -183,15 +246,24 @@ ${exp.bullets.map((b) => `- ${b}`).join("\n")}
 [회사명] | [기간]
 • bullet 1
 • bullet 2
-• bullet 3`
+• bullet 3
+
+중요: 이력서 본문에 이모지를 절대 사용하지 마세요.`
         : `## Job Posting Information
 Company: ${companyName}
 Position: ${jobTitle}
 Summary: ${jobSummary}
 
-## Key Required Competencies
-${keyCompetencies.map((k, i) => `${i + 1}. ${k.title}: ${k.description}`).join("\n")}
+${minReqSection}
+## Key Required Competencies (with AI Fit Evaluation)
+${competencyEvaluationSection}
 
+${weakCompetencies.length > 0 ? `## Competencies Needing Improvement (Low Scores)
+${weakCompetencies.map(k => `- ${k.title} (${k.score}/5): ${k.evaluation || 'Lacking related experience'}`).join("\n")}
+` : ''}
+${strongCompetencies.length > 0 ? `## Strong Competencies (High Scores)
+${strongCompetencies.map(k => `- ${k.title} (${k.score}/5): ${k.evaluation || 'Rich related experience'}`).join("\n")}
+` : ''}
 ## Candidate's Experience
 ${experiences
   .map(
@@ -206,10 +278,10 @@ ${exp.bullets.map((b) => `- ${b}`).join("\n")}
   .join("\n")}
 
 Request:
-1) In ===AI_FEEDBACK===, for each competency:
-- what evidence you used from the experience
-- what you strengthened
-- what else to highlight
+1) In ===AI_FEEDBACK===:
+- How you compensated for weak competencies
+- How you highlighted strong competencies
+- How you optimized the experience order
 2) In ===RESUME===, write ONLY the resume body.
 
 Resume body format:
@@ -219,7 +291,9 @@ Resume body format:
 [Company Name] | [Period]
 • bullet 1
 • bullet 2
-• bullet 3`;
+• bullet 3
+
+IMPORTANT: Do NOT use emojis in the resume body.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

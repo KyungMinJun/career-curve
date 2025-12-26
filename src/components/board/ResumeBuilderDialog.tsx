@@ -111,10 +111,16 @@ export function ResumeBuilderDialog({
           jobTitle: job.title,
           companyName: job.companyName,
           jobSummary: job.summary || '',
-          keyCompetencies,
+          keyCompetencies: keyCompetencies.map(k => ({
+            title: k.title,
+            description: k.description,
+            score: k.score,
+            evaluation: k.evaluation,
+          })),
           experiences: selectedExps,
           language,
           format: selectedFormat,
+          minimumRequirementsCheck: job.minimumRequirementsCheck,
         },
       });
 
