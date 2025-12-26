@@ -510,16 +510,18 @@ export function CareerTab() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {tailoredResumes.map((resume) => (
-                  <TailoredResumeCard
-                    key={resume.id}
-                    resume={resume}
-                    onPreview={() => setPreviewingTailoredResume(resume)}
-                    onEdit={() => setEditingTailoredResume(resume)}
-                    onDelete={() => removeTailoredResume(resume.id)}
-                    userName={userName}
-                  />
-                ))}
+                {[...tailoredResumes]
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((resume) => (
+                    <TailoredResumeCard
+                      key={resume.id}
+                      resume={resume}
+                      onPreview={() => setPreviewingTailoredResume(resume)}
+                      onEdit={() => setEditingTailoredResume(resume)}
+                      onDelete={() => removeTailoredResume(resume.id)}
+                      userName={userName}
+                    />
+                  ))}
 
                 {tailoredResumes.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-2">
@@ -988,7 +990,7 @@ function TailoredResumePreviewDialog({
     if (!resume) return;
     setIsExporting(true);
     try {
-      const format: ResumeFormat = resume.language === 'en' ? 'consulting' : 'narrative';
+      const format: ResumeFormat = (resume as any).format ?? (resume.language === 'en' ? 'consulting' : 'narrative');
       const chosenNameDownload = resume.language === 'en'
         ? (userNames.en || userNames.display || 'Name')
         : (userNames.ko || userNames.display || '이름');
@@ -1004,7 +1006,7 @@ function TailoredResumePreviewDialog({
 
   if (!resume) return null;
 
-  const format: ResumeFormat = resume.language === 'en' ? 'consulting' : 'narrative';
+  const format: ResumeFormat = (resume as any).format ?? (resume.language === 'en' ? 'consulting' : 'narrative');
   const chosenName = resume.language === 'en'
     ? (userNames.en || userNames.display || 'Name')
     : (userNames.ko || userNames.display || '이름');

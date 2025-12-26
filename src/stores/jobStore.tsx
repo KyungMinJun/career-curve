@@ -49,29 +49,11 @@ interface JobStore {
   setUserName: (name: string) => void; // legacy setter (updates display name only)
 }
 
-// Simple example posting
-const sampleJobPostings: JobPosting[] = [
-  {
-    id: 'example-1',
-    companyName: '예시 회사',
-    title: '예시 공고',
-    status: 'reviewing',
-    priority: 3,
-    position: '포지션',
-    summary: '이것은 예시 공고입니다. 채팅에서 공고 링크를 붙여넣으면 자동으로 분석됩니다.',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+// NOTE: 이전 버전에서 로그인 전(또는 로그아웃 직후) 화면에 예시/목데이터가 노출될 수 있어,
+// 기본 샘플 데이터는 사용하지 않습니다.
+const sampleJobPostings: JobPosting[] = [];
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: 'welcome',
-    type: 'assistant',
-    content: '안녕하세요! 공고 링크를 붙여넣으면 자동으로 정리해드릴게요.',
-    createdAt: new Date(),
-  },
-];
+const initialMessages: ChatMessage[] = [];
 
 const createJobStore = (storageKey: string) =>
   createStore<JobStore>()(
@@ -199,6 +181,7 @@ const createJobStore = (storageKey: string) =>
             ...r,
             createdAt: new Date(r.createdAt),
             updatedAt: new Date(r.updatedAt),
+            format: (r as any).format ?? (r.language === 'en' ? 'consulting' : 'narrative'),
           }));
           if (state.currentGoal) {
             state.currentGoal.createdAt = new Date(state.currentGoal.createdAt);

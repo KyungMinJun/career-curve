@@ -137,6 +137,11 @@
     padding-top: max(1rem, env(safe-area-inset-top));
   }
 
+  /* Slightly larger safe area padding (for titles) */
+  .safe-top-lg {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+  }
+
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }

@@ -7,7 +7,7 @@ const Privacy = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3">
+      <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 safe-top-lg">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />

@@ -85,7 +85,7 @@ export default function ResetPassword() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3">
+        <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 safe-top-lg">
           <div className="max-w-md mx-auto flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/auth", { replace: true })}>
               <ArrowLeft className="w-5 h-5" />
@@ -110,7 +110,7 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3">
+      <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 safe-top-lg">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/auth", { replace: true })}>
             <ArrowLeft className="w-5 h-5" />

@@ -27,7 +27,7 @@ export function PageHeader({
         : '';
 
   return (
-    <header className={cn('px-4 pt-safe-top pb-4 bg-background safe-top', className)}>
+    <header className={cn('px-4 pb-4 bg-background safe-top-lg', className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {logoSize !== 'none' && (

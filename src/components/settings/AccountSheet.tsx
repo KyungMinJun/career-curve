@@ -37,9 +37,23 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
 
   const handleLogout = async () => {
     await signOut();
+
+    // Clear all persisted app data so nothing "lingers" after logout
+    try {
+      const keys = Object.keys(localStorage);
+      keys
+        .filter((k) => k === 'jobflow-storage' || k.startsWith('jobflow-storage'))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      // ignore
+    }
+
     toast.success('로그아웃되었습니다');
     onOpenChange(false);
+
+    // Force a clean app state
     navigate('/auth', { replace: true });
+    setTimeout(() => window.location.reload(), 50);
   };
 
   const handleSendPasswordReset = async () => {

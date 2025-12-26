@@ -28,8 +28,8 @@ interface ResumeBuilderDialogProps {
 type ResumeFormat = 'consulting' | 'narrative';
 
 const RESUME_FORMATS: { id: ResumeFormat; name: string; description: string }[] = [
-  { id: 'consulting', name: '컨설팅형(외국형)', description: '팔란티어 스타일의 간결한 성과 중심 포맷' },
-  { id: 'narrative', name: '서술형(국문형)', description: '자기소개/서술 중심의 국문 이력서 포맷' },
+  { id: 'consulting', name: '컨설팅형(외국형)', description: '외국계 표준 포맷(경험 중심, 정돈된 섹션)' },
+  { id: 'narrative', name: '서술형(설명형)', description: '경력 설명 + Selected Projects가 포함된 포맷' },
 ];
 
 function detectLanguage(text: string): 'ko' | 'en' {
@@ -147,6 +147,7 @@ export function ResumeBuilderDialog({
       content: generatedContent,
       aiFeedback: aiFeedback || undefined,
       language,
+      format: selectedFormat,
       createdAt: now,
       updatedAt: now,
     };
@@ -317,7 +318,7 @@ export function ResumeBuilderDialog({
             <div className="flex flex-col gap-2">
               {isGenerating && (
                 <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center">
-                  ⏱ 약 15초 소요됩니다. 중간에 나가면 저장되지 않습니다.
+                  약 15초 소요됩니다. 중간에 나가면 저장되지 않습니다.
                 </div>
               )}
               <div className="flex gap-2">
