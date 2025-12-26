@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { keyCompetencies, experiences } = await req.json();
+    const { keyCompetencies, experiences, minExperience } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -26,7 +26,7 @@ serve(async (req) => {
     }
 
     const experiencesSummary = experiences.map((exp: any) => 
-      `[${exp.type === 'work' ? '경력' : '프로젝트'}] ${exp.title}${exp.company ? ` @ ${exp.company}` : ''}\n${exp.description || ''}\n${exp.bullets?.join('\n') || ''}`
+      `[${exp.type === 'work' ? '경력' : '프로젝트'}] ${exp.title}${exp.company ? ` @ ${exp.company}` : ''}${exp.period ? ` (${exp.period})` : ''}\n${exp.description || ''}\n${exp.bullets?.join('\n') || ''}`
     ).join('\n\n');
 
     const competenciesList = keyCompetencies.map((c: any, i: number) => 
@@ -54,15 +54,23 @@ For each competency, provide:
 2. A brief, honest evaluation in Korean explaining the gap or match (2-3 sentences)
 3. Specific evidence from their experience, or note the lack thereof
 
+Also, evaluate minimum requirements check (최소 조건 충족 여부):
+- Analyze if the candidate meets the minimum experience requirement based on their work history periods
+- Consider total years of relevant experience from their employment history
+- Be strict: only count directly relevant work experience, not projects or unrelated jobs
+
 Always respond in Korean.`;
 
-    const userPrompt = `공고에서 요구하는 5가지 핵심 역량:
+    const userPrompt = `공고에서 요구하는 최소 경력: ${minExperience || '정보 없음'}
+
+공고에서 요구하는 5가지 핵심 역량:
 ${competenciesList}
 
 지원자의 경험:
 ${experiencesSummary}
 
-각 역량에 대해 지원자의 적합도를 평가해주세요.`;
+1. 먼저 최소 경력 조건 충족 여부를 판단해주세요 (충족/미충족/판단 불가).
+2. 각 역량에 대해 지원자의 적합도를 평가해주세요.`;
 
     console.log('Evaluating fit with AI');
 
@@ -82,11 +90,19 @@ ${experiencesSummary}
           {
             type: "function",
             function: {
-              name: "evaluate_competencies",
-              description: "Evaluate candidate fit for each competency",
+              name: "evaluate_fit",
+              description: "Evaluate candidate's minimum requirements and competency fit",
               parameters: {
                 type: "object",
                 properties: {
+                  minimumRequirements: {
+                    type: "object",
+                    properties: {
+                      experienceMet: { type: "string", enum: ["충족", "미충족", "판단 불가"], description: "Whether minimum experience requirement is met" },
+                      reason: { type: "string", description: "Brief explanation in Korean" }
+                    },
+                    required: ["experienceMet", "reason"]
+                  },
                   evaluations: {
                     type: "array",
                     items: {
@@ -100,12 +116,12 @@ ${experiencesSummary}
                     }
                   }
                 },
-                required: ["evaluations"]
+                required: ["minimumRequirements", "evaluations"]
               }
             }
           }
         ],
-        tool_choice: { type: "function", function: { name: "evaluate_competencies" } }
+        tool_choice: { type: "function", function: { name: "evaluate_fit" } }
       }),
     });
 
@@ -119,12 +135,14 @@ ${experiencesSummary}
     console.log('AI response received');
 
     let evaluations: any[] = [];
+    let minimumRequirements = { experienceMet: "판단 불가", reason: "평가 실패" };
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
         evaluations = parsed.evaluations || [];
+        minimumRequirements = parsed.minimumRequirements || minimumRequirements;
       } catch (e) {
         console.error('Failed to parse tool call arguments:', e);
       }
@@ -141,7 +159,7 @@ ${experiencesSummary}
     });
 
     return new Response(
-      JSON.stringify({ success: true, evaluatedCompetencies }),
+      JSON.stringify({ success: true, evaluatedCompetencies, minimumRequirements }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

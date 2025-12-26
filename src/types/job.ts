@@ -32,6 +32,12 @@ export interface JobInfoField {
   evidence?: string; // Source sentence from job posting
 }
 
+// Minimum requirements check result
+export interface MinimumRequirementsCheck {
+  experienceMet: '충족' | '미충족' | '판단 불가';
+  reason: string;
+}
+
 // Job posting data structure
 export interface JobPosting {
   id: string;
@@ -51,6 +57,7 @@ export interface JobPosting {
   summary?: string;
   companyScore?: number; // 1-5 average
   fitScore?: number; // 1-5 average
+  minimumRequirementsCheck?: MinimumRequirementsCheck; // AI 최소 조건 검토 결과
   companyCriteriaScores?: CompanyCriteriaScore[]; // Per-job company criteria scores
   keyCompetencies?: KeyCompetency[]; // AI-extracted from recruiter perspective
   sourceUrl?: string;

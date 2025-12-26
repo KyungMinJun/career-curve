@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, KeyCompetency, CompanyCriteriaScore } from '@/types/job';
+import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, KeyCompetency, CompanyCriteriaScore, MinimumRequirementsCheck } from '@/types/job';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,9 @@ import {
   Edit2,
   Check,
   X,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { ResumeBuilderDialog } from './ResumeBuilderDialog';
 import { FitEvaluationButton } from './FitEvaluationButton';
@@ -54,7 +57,7 @@ interface JobDetailDialogProps {
 }
 
 export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }: JobDetailDialogProps) {
-  const { updateJobPosting, currentGoals, experiences } = useJobStore();
+  const { updateJobPosting, currentGoals, experiences, jobPostings } = useJobStore();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isResumeBuilderOpen, setIsResumeBuilderOpen] = useState(false);
@@ -86,6 +89,11 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
     job.keyCompetencies || []
   );
 
+  // Minimum requirements check state
+  const [minimumRequirementsCheck, setMinimumRequirementsCheck] = useState<MinimumRequirementsCheck | undefined>(
+    job.minimumRequirementsCheck
+  );
+
   // Calculate average scores
   const companyAvg = companyCriteriaScores.filter(c => c.score).length > 0
     ? Math.round(companyCriteriaScores.reduce((sum, c) => sum + (c.score || 0), 0) / companyCriteriaScores.filter(c => c.score).length)
@@ -94,6 +102,52 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
   const fitAvg = keyCompetencyScores.filter(c => c.score).length > 0
     ? Math.round(keyCompetencyScores.reduce((sum, c) => sum + (c.score || 0), 0) / keyCompetencyScores.filter(c => c.score).length)
     : 0;
+
+  // Calculate relative priority based on all job postings
+  const calculateRelativePriority = (compScore: number, fitScoreVal: number): number => {
+    // Get all job postings with scores
+    const allScores = jobPostings
+      .filter(j => (j.companyScore && j.companyScore > 0) || (j.fitScore && j.fitScore > 0))
+      .map(j => {
+        const comp = j.companyScore || 0;
+        const fit = j.fitScore || 0;
+        const count = (comp > 0 ? 1 : 0) + (fit > 0 ? 1 : 0);
+        return count > 0 ? (comp + fit) / count : 0;
+      })
+      .filter(s => s > 0);
+
+    // Calculate this job's average
+    const count = (compScore > 0 ? 1 : 0) + (fitScoreVal > 0 ? 1 : 0);
+    const thisScore = count > 0 ? (compScore + fitScoreVal) / count : 0;
+    
+    if (thisScore === 0 || allScores.length === 0) return 3; // Default to middle
+
+    // Sort all scores (including this one) descending
+    const allWithThis = [...allScores.filter(s => s !== thisScore), thisScore].sort((a, b) => b - a);
+    
+    if (allWithThis.length === 1) {
+      // Only one job - assign based on absolute score
+      if (thisScore >= 4) return 1;
+      if (thisScore >= 3) return 2;
+      if (thisScore >= 2) return 3;
+      if (thisScore >= 1) return 4;
+      return 5;
+    }
+
+    // Find this job's rank (0-indexed)
+    const rank = allWithThis.indexOf(thisScore);
+    const totalJobs = allWithThis.length;
+
+    // Distribute into 5 priority buckets relatively
+    // Priority 1: top 20%, Priority 2: 20-40%, etc.
+    const percentile = rank / totalJobs;
+    
+    if (percentile < 0.2) return 1;
+    if (percentile < 0.4) return 2;
+    if (percentile < 0.6) return 3;
+    if (percentile < 0.8) return 4;
+    return 5;
+  };
 
   const handleStatusChange = (status: JobStatus) => {
     updateJobPosting(job.id, { status });
@@ -113,7 +167,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
       companyCriteriaScores: updated, 
       companyScore: avg 
     });
-    updatePriority(avg, fitAvg);
+    updatePriorityRelative(avg, fitAvg);
   };
 
   const handleKeyCompetencyScoreChange = (index: number, score: number) => {
@@ -126,7 +180,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
       keyCompetencies: updated, 
       fitScore: avg 
     });
-    updatePriority(companyAvg, avg);
+    updatePriorityRelative(companyAvg, avg);
   };
 
   const handleEvaluationUpdate = (index: number, evaluation: string) => {
@@ -138,20 +192,22 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
     setEditEvalText('');
   };
 
-  const handleAIEvaluated = (evaluatedCompetencies: KeyCompetency[]) => {
+  const handleAIEvaluated = (evaluatedCompetencies: KeyCompetency[], minReqs?: MinimumRequirementsCheck) => {
     setKeyCompetencyScores(evaluatedCompetencies);
+    setMinimumRequirementsCheck(minReqs);
+    
     const avg = Math.round(evaluatedCompetencies.reduce((sum, c) => sum + (c.score || 0), 0) / evaluatedCompetencies.filter(c => c.score).length) || 0;
     updateJobPosting(job.id, { 
       keyCompetencies: evaluatedCompetencies, 
-      fitScore: avg 
+      fitScore: avg,
+      minimumRequirementsCheck: minReqs 
     });
-    updatePriority(companyAvg, avg);
+    updatePriorityRelative(companyAvg, avg);
   };
 
-  const updatePriority = (compScore: number, fitScoreVal: number) => {
+  const updatePriorityRelative = (compScore: number, fitScoreVal: number) => {
     if (compScore === 0 && fitScoreVal === 0) return;
-    const avgScore = ((compScore || 0) + (fitScoreVal || 0)) / 2;
-    const newPriority = Math.max(1, Math.min(5, Math.round(6 - avgScore)));
+    const newPriority = calculateRelativePriority(compScore, fitScoreVal);
     updateJobPosting(job.id, { priority: newPriority });
   };
 
@@ -291,6 +347,36 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                 </div>
               )}
 
+              {/* Minimum Requirements Check - 최소 조건 충족 여부 */}
+              {minimumRequirementsCheck && (
+                <div className={cn(
+                  "rounded-lg p-3 flex items-start gap-3 border",
+                  minimumRequirementsCheck.experienceMet === '충족' 
+                    ? "bg-success/10 border-success/20" 
+                    : minimumRequirementsCheck.experienceMet === '미충족'
+                    ? "bg-destructive/10 border-destructive/20"
+                    : "bg-warning/10 border-warning/20"
+                )}>
+                  {minimumRequirementsCheck.experienceMet === '충족' ? (
+                    <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                  ) : minimumRequirementsCheck.experienceMet === '미충족' ? (
+                    <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  ) : (
+                    <HelpCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={cn(
+                      "text-sm font-semibold",
+                      minimumRequirementsCheck.experienceMet === '충족' ? "text-success" :
+                      minimumRequirementsCheck.experienceMet === '미충족' ? "text-destructive" : "text-warning"
+                    )}>
+                      최소 경력 조건: {minimumRequirementsCheck.experienceMet}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{minimumRequirementsCheck.reason}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Key Competencies from AI - with scoring and AI evaluation */}
               {keyCompetencyScores.length > 0 && (
                 <div className="space-y-3">
@@ -320,6 +406,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                   <FitEvaluationButton
                     keyCompetencies={keyCompetencyScores}
                     experiences={experiences}
+                    minExperience={job.minExperience}
                     onEvaluated={handleAIEvaluated}
                   />
 

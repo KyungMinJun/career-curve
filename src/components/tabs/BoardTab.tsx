@@ -47,11 +47,37 @@ const SORT_LABELS: Record<SortOption, string> = {
   company: '회사명순 (한글→영문)',
 };
 
+// Load filters from localStorage
+const loadSavedFilters = (): FilterState => {
+  try {
+    const saved = localStorage.getItem('curve-board-filters');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load filters', e);
+  }
+  return { minExperience: '', workType: '', location: '' };
+};
+
 export function BoardTab() {
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [sortOption, setSortOption] = useState<SortOption>('priority');
-  const [filters, setFilters] = useState<FilterState>({ minExperience: '', workType: '', location: '' });
+  const [filters, setFiltersState] = useState<FilterState>(loadSavedFilters);
   const { jobPostings, userName, currentGoal, updateJobPosting } = useJobStore();
+
+  // Persist filters to localStorage
+  const setFilters = (updater: FilterState | ((prev: FilterState) => FilterState)) => {
+    setFiltersState((prev) => {
+      const newFilters = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem('curve-board-filters', JSON.stringify(newFilters));
+      } catch (e) {
+        console.error('Failed to save filters', e);
+      }
+      return newFilters;
+    });
+  };
 
   // 필터 옵션 목록 추출
   const filterOptions = useMemo(() => {
