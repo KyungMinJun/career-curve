@@ -153,9 +153,13 @@ serve(async (req) => {
 
 AI_FEEDBACK 작성 규칙(엄수):
 - 반드시 아래 2개 섹션으로만 구성하세요.
-  1) ## 종합의견
+  1) ## 종합 의견
   2) ## 세부 수정 의견
-- 종합의견에는: 적합해 보이는 점 / 아쉬운 점 / 어떤 내용을 중심으로 보완했는지 를 간결하게 정리
+- 종합 의견에는 (중요! 아래 내용만 작성):
+  * 이 공고에 대해 지원자의 역량이 어떻게 보이는지 (강점/약점 분석)
+  * 어떤 점을 보완해야 하는지
+  * 이력서에서 어떤 부분을 강조/수정했는지
+  * "핵심 역량을 기준으로 최적화했습니다" 같은 기본 문구 절대 포함하지 말 것
 - 세부 수정 의견에는: 수정 포인트를 항목별로 제시(가능하면 원문 대비 변경 이유 포함)
 - 절대 없는 사실을 만들어내지 말 것(경험/성과 과장 금지)
 
@@ -176,11 +180,13 @@ You must optimize the resume based on the AI fit evaluation results:
 3. **Strong Competency Maximization**: Highlight high-scoring competencies with specific achievements and numbers
 4. **Reflect AI Analysis**: If AI analysis exists for each competency, incorporate it when writing relevant experiences
 5. **If Minimum Requirements Not Met**: Emphasize experiences showing quick learning ability/adaptability/passion
+6. **Native English Quality**: Write in fluent, natural English as a native speaker would. Avoid awkward phrasing, literal translations, or non-idiomatic expressions. Use strong action verbs and professional resume language.
 
 CRITICAL RULES:
 - You MUST output using the exact markers below.
 - Do NOT output any text outside of the markers.
 - Do NOT use emojis in the resume body.
+- The resume MUST be written in professional, native-level English.
 
 Output format (STRICT):
 ===AI_FEEDBACK===
@@ -192,12 +198,18 @@ AI_FEEDBACK rules (STRICT):
 - Use exactly these two sections:
   1) ## Overall Assessment
   2) ## Detailed Revision Notes
-- Overall Assessment: strengths, gaps, what you improved and why
+- Overall Assessment (IMPORTANT! Only include):
+  * How the candidate's competencies appear for this specific job (strengths/weaknesses analysis)
+  * What areas need improvement
+  * What parts of the resume were emphasized/modified
+  * Do NOT include generic phrases like "optimized based on key competencies"
 - Detailed Revision Notes: itemized edits with rationale
 - Never invent facts; no exaggeration
 
 Additional rules:
-- Write in English.
+- Write in fluent, natural English (native speaker quality).
+- Review all expressions for natural phrasing - avoid awkward translations.
+- Use strong action verbs (Led, Drove, Spearheaded, Orchestrated, etc.)
 - The resume body must NOT contain feedback/advice text.
 - Do NOT use emojis in the resume body (e.g., no ⚠, ✓, ★, etc.).
 - Format: ${format === "consulting" ? "consulting-style (concise, results-driven)" : "narrative-style"}.`;
