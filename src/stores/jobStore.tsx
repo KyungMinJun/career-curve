@@ -42,8 +42,11 @@ interface JobStore {
   removeGoalHistory: (id: string) => void;
 
   // User info
-  userName: string;
-  setUserName: (name: string) => void;
+  userName: string; // display name (derived)
+  userNameKo: string;
+  userNameEn: string;
+  setUserNames: (names: { ko: string; en: string }) => void;
+  setUserName: (name: string) => void; // legacy setter (updates display name only)
 }
 
 // Simple example posting
@@ -146,20 +149,29 @@ const createJobStore = (storageKey: string) =>
 
         // User info
         userName: '사용자',
+        userNameKo: '',
+        userNameEn: '',
+        setUserNames: (names) =>
+          set(() => ({
+            userNameKo: names.ko,
+            userNameEn: names.en,
+            userName: names.ko || names.en || '사용자',
+          })),
         setUserName: (name) => set({ userName: name }),
-      }),
       {
         name: storageKey,
-        partialize: (state) => ({
-          jobPostings: state.jobPostings,
-          messages: state.messages,
-          experiences: state.experiences,
-          resumes: state.resumes,
-          tailoredResumes: state.tailoredResumes,
-          currentGoal: state.currentGoal,
-          goalHistory: state.goalHistory,
-          userName: state.userName,
-        }),
+          partialize: (state) => ({
+            jobPostings: state.jobPostings,
+            messages: state.messages,
+            experiences: state.experiences,
+            resumes: state.resumes,
+            tailoredResumes: state.tailoredResumes,
+            currentGoal: state.currentGoal,
+            goalHistory: state.goalHistory,
+            userName: state.userName,
+            userNameKo: state.userNameKo,
+            userNameEn: state.userNameEn,
+          }),
         onRehydrateStorage: () => (state) => {
           if (!state) return;
 

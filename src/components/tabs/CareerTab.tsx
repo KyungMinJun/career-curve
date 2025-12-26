@@ -44,7 +44,7 @@ import { exportResumeToDocx } from '@/lib/resumeExporter';
 import { exportTailoredResumeToDocx, formatResumeForPreview, ResumeFormat } from '@/lib/tailoredResumeExporter';
 
 export function CareerTab() {
-  const { experiences, resumes, tailoredResumes, userName, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume, updateTailoredResume, removeTailoredResume } = useJobStore();
+  const { experiences, resumes, tailoredResumes, userName, userNameKo, userNameEn, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume, updateTailoredResume, removeTailoredResume } = useJobStore();
   const [resumesOpen, setResumesOpen] = useState(true);
   const [workOpen, setWorkOpen] = useState(true);
   const [projectOpen, setProjectOpen] = useState(true);
@@ -625,18 +625,19 @@ export function CareerTab() {
         resume={previewingTailoredResume}
         open={!!previewingTailoredResume}
         onOpenChange={(open) => !open && setPreviewingTailoredResume(null)}
-        userName={userName}
+        userNames={{ ko: userNameKo, en: userNameEn, display: userName }}
       />
 
       {/* Resume Preview Dialog (경력탭 이력서 미리보기) */}
       <ResumePreviewDialog
         open={showResumePreview}
         onOpenChange={setShowResumePreview}
-        userName={userName}
+        userNames={{ ko: userNameKo, en: userNameEn, display: userName }}
         experiences={experiences}
         onExport={async () => {
           setIsExporting(true);
           try {
+            // 기본 이력서는 '표시 이름' 사용
             await exportResumeToDocx({ userName, experiences });
             toast.success('이력서가 다운로드되었습니다');
           } catch (err) {
@@ -977,12 +978,12 @@ function TailoredResumePreviewDialog({
   resume, 
   open, 
   onOpenChange,
-  userName
+  userNames
 }: { 
   resume: TailoredResume | null; 
   open: boolean; 
   onOpenChange: (open: boolean) => void;
-  userName: string;
+  userNames: { ko: string; en: string; display: string };
 }) {
   const [isExporting, setIsExporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -1005,7 +1006,22 @@ function TailoredResumePreviewDialog({
   if (!resume) return null;
 
   const format: ResumeFormat = resume.language === 'en' ? 'consulting' : 'narrative';
-  const previewContent = formatResumeForPreview(resume.content, userName, format);
+  const chosenName = resume.language === 'en'
+    ? (userNames.en || userNames.display || 'Name')
+    : (userNames.ko || userNames.display || '이름');
+
+  const previewContent = formatResumeForPreview(resume.content, chosenName, format);
+
+  // Make the "resume paper" look consistent with the Career resume preview
+  const previewLines = previewContent.split('\n');
+  const bodyContent = (() => {
+    const first = (previewLines[0] || '').trim();
+    const second = (previewLines[1] || '').trim();
+    const looksLikeHeader = first.toLowerCase() === chosenName.trim().toLowerCase() || first.includes(chosenName);
+    if (looksLikeHeader && !second) return previewLines.slice(2).join('\n');
+    if (looksLikeHeader) return previewLines.slice(1).join('\n');
+    return previewContent;
+  })();
 
   return (
     <>
@@ -1022,13 +1038,16 @@ function TailoredResumePreviewDialog({
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-hidden flex flex-col gap-3">
-            {/* Resume Preview - styled like actual resume */}
-            <div className="bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 flex-1 overflow-y-auto min-h-[300px] shadow-inner">
-              <pre className="text-sm whitespace-pre-wrap font-sans text-foreground leading-relaxed" style={{ fontFamily: resume.language === 'en' ? 'Georgia, serif' : 'Pretendard, sans-serif' }}>
-                {previewContent}
-              </pre>
-            </div>
+           <div className="flex-1 overflow-hidden flex flex-col gap-3">
+             {/* Resume Preview - styled like actual resume */}
+             <div className="bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 flex-1 overflow-y-auto min-h-[300px] shadow-inner">
+               <h1 className="text-2xl font-bold text-center text-foreground mb-6 border-b-2 border-foreground pb-2">
+                 {chosenName}
+               </h1>
+               <pre className="text-sm whitespace-pre-wrap font-sans text-foreground leading-relaxed" style={{ fontFamily: resume.language === 'en' ? 'Georgia, serif' : 'Pretendard, sans-serif' }}>
+                 {bodyContent}
+               </pre>
+             </div>
 
             {/* Action buttons */}
             <div className="flex gap-2">
@@ -1071,15 +1090,17 @@ function TailoredResumePreviewDialog({
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="bg-accent/30 rounded-lg p-4 text-sm text-foreground leading-relaxed max-h-[50vh] overflow-y-auto">
-              <FormattedFeedback content={resume.aiFeedback || ''} />
-            </div>
-            
-            <Button variant="outline" className="w-full" onClick={() => setShowFeedback(false)}>
-              이력서로 돌아가기
-            </Button>
-          </div>
+           <div className="space-y-3">
+             <div className="rounded-lg border border-border bg-warning/10 text-warning p-3 text-xs leading-relaxed">
+               이 과정에서 왜곡, 과장되는 내용이 있을 수 있으니, 스크리닝은 필수입니다!
+             </div>
+
+             <FeedbackSplitView content={resume.aiFeedback || ''} />
+
+             <Button variant="outline" className="w-full" onClick={() => setShowFeedback(false)}>
+               이력서로 돌아가기
+             </Button>
+           </div>
         </DialogContent>
       </Dialog>
     </>
@@ -1238,18 +1259,65 @@ function FormattedFeedback({ content }: { content: string }) {
   );
 }
 
-// Resume Preview Dialog for Career Tab - shows experiences in resume format
+function FeedbackSplitView({ content }: { content: string }) {
+  const sections = splitFeedbackSections(content);
+
+  return (
+    <div className="grid gap-3">
+      <section className="bg-accent/30 rounded-lg p-4 text-sm text-foreground leading-relaxed">
+        <h3 className="font-bold text-lg text-foreground mb-2 border-b border-border pb-1">종합의견</h3>
+        <div className="max-h-[22vh] overflow-y-auto">
+          <FormattedFeedback content={sections.overall} />
+        </div>
+      </section>
+
+      <section className="bg-accent/30 rounded-lg p-4 text-sm text-foreground leading-relaxed">
+        <h3 className="font-bold text-lg text-foreground mb-2 border-b border-border pb-1">세부 수정 의견</h3>
+        <div className="max-h-[22vh] overflow-y-auto">
+          <FormattedFeedback content={sections.details} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function splitFeedbackSections(raw: string): { overall: string; details: string } {
+  const text = (raw || '').trim();
+  if (!text) return { overall: '', details: '' };
+
+  // Try Korean headings first
+  const koOverallIdx = text.indexOf('## 종합의견');
+  const koDetailIdx = text.indexOf('## 세부 수정 의견');
+  if (koOverallIdx !== -1 && koDetailIdx !== -1) {
+    const overall = text.slice(koOverallIdx + '## 종합의견'.length, koDetailIdx).trim();
+    const details = text.slice(koDetailIdx + '## 세부 수정 의견'.length).trim();
+    return { overall: overall || '—', details: details || '—' };
+  }
+
+  // English headings fallback
+  const enOverallIdx = text.toLowerCase().indexOf('## overall assessment');
+  const enDetailIdx = text.toLowerCase().indexOf('## detailed revision notes');
+  if (enOverallIdx !== -1 && enDetailIdx !== -1) {
+    const overall = text.slice(enOverallIdx + '## Overall Assessment'.length, enDetailIdx).trim();
+    const details = text.slice(enDetailIdx + '## Detailed Revision Notes'.length).trim();
+    return { overall: overall || '—', details: details || '—' };
+  }
+
+  // If not structured, put everything into overall
+  return { overall: text, details: '—' };
+}
+
 function ResumePreviewDialog({
   open,
   onOpenChange,
-  userName,
+  userNames,
   experiences,
   onExport,
   isExporting,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userName: string;
+  userNames: { ko: string; en: string; display: string };
   experiences: Experience[];
   onExport: () => void;
   isExporting: boolean;
@@ -1270,11 +1338,11 @@ function ResumePreviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 shadow-inner min-h-[300px]">
-          {/* Name Header */}
-          <h1 className="text-2xl font-bold text-center text-foreground mb-6 border-b-2 border-foreground pb-2">
-            {userName || '이름'}
-          </h1>
+         <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 shadow-inner min-h-[300px]">
+           {/* Name Header */}
+           <h1 className="text-2xl font-bold text-center text-foreground mb-6 border-b-2 border-foreground pb-2">
+             {userNames.display || userNames.ko || userNames.en || '이름'}
+           </h1>
 
           {/* Work Experience */}
           {workExperiences.length > 0 && (

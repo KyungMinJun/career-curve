@@ -7,35 +7,30 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Phone, Mail } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 const emailSchema = z.string().email('올바른 이메일 형식이 아닙니다');
 const passwordSchema = z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다');
-const nameSchema = z.string().min(2, '이름은 최소 2자 이상이어야 합니다');
-const phoneSchema = z.string().regex(/^01[0-9]{8,9}$/, '올바른 전화번호 형식이 아닙니다 (예: 01012345678)');
+const nameKoSchema = z.string().min(2, '국문 이름은 최소 2자 이상이어야 합니다');
+const nameEnSchema = z.string().min(2, '영문 이름은 최소 2자 이상이어야 합니다');
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, isLoading, signIn, signUp, signInWithPhone, verifyOtp } = useAuth();
+  const { user, isLoading, signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('phone');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
   const [formData, setFormData] = useState({
-    name: '',
+    nameKo: '',
+    nameEn: '',
     email: '',
     password: '',
-    phone: '',
     termsAgreed: false,
     privacyAgreed: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const emailValid = useMemo(() => emailSchema.safeParse(formData.email).success, [formData.email]);
-  const phoneValid = useMemo(() => phoneSchema.safeParse(formData.phone).success, [formData.phone]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -47,31 +42,27 @@ export default function Auth() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (authMethod === 'email') {
-      const emailResult = emailSchema.safeParse(formData.email);
-      if (!emailResult.success) {
-        newErrors.email = emailResult.error.errors[0].message;
-      }
+    const emailResult = emailSchema.safeParse(formData.email);
+    if (!emailResult.success) {
+      newErrors.email = emailResult.error.errors[0].message;
+    }
 
-      const passwordResult = passwordSchema.safeParse(formData.password);
-      if (!passwordResult.success) {
-        newErrors.password = passwordResult.error.errors[0].message;
-      }
-
-      if (mode === 'signup') {
-        const nameResult = nameSchema.safeParse(formData.name);
-        if (!nameResult.success) {
-          newErrors.name = nameResult.error.errors[0].message;
-        }
-      }
-    } else {
-      const phoneResult = phoneSchema.safeParse(formData.phone);
-      if (!phoneResult.success) {
-        newErrors.phone = phoneResult.error.errors[0].message;
-      }
+    const passwordResult = passwordSchema.safeParse(formData.password);
+    if (!passwordResult.success) {
+      newErrors.password = passwordResult.error.errors[0].message;
     }
 
     if (mode === 'signup') {
+      const nameKoResult = nameKoSchema.safeParse(formData.nameKo.trim());
+      if (!nameKoResult.success) {
+        newErrors.nameKo = nameKoResult.error.errors[0].message;
+      }
+
+      const nameEnResult = nameEnSchema.safeParse(formData.nameEn.trim());
+      if (!nameEnResult.success) {
+        newErrors.nameEn = nameEnResult.error.errors[0].message;
+      }
+
       if (!formData.termsAgreed) {
         newErrors.termsAgreed = '이용약관에 동의해주세요';
       }
@@ -84,49 +75,6 @@ export default function Auth() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePhoneSubmit = async () => {
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
-    try {
-      const formattedPhone = '+82' + formData.phone.slice(1);
-      const { error } = await signInWithPhone(formattedPhone);
-      if (error) {
-        const msg = error.message || '인증번호 발송에 실패했습니다';
-        if (msg.toLowerCase().includes('sms provider') || msg.toLowerCase().includes('unable to get sms provider')) {
-          toast.error('현재 SMS(문자) 인증 발송 설정이 되어있지 않습니다. 잠시 후 다시 시도하거나 이메일 로그인을 사용해주세요.');
-        } else {
-          toast.error(msg);
-        }
-      } else {
-        setOtpSent(true);
-        toast.success('인증번호가 발송되었습니다');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleOtpVerify = async () => {
-    if (otpCode.length !== 6) {
-      toast.error('6자리 인증번호를 입력해주세요');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const formattedPhone = '+82' + formData.phone.slice(1);
-      const { error } = await verifyOtp(formattedPhone, otpCode);
-      if (error) {
-        toast.error(error.message || '인증에 실패했습니다');
-      } else {
-        toast.success('로그인되었습니다');
-        navigate('/');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,7 +97,10 @@ export default function Auth() {
           navigate('/');
         }
       } else {
-        const { error } = await signUp(formData.email, formData.password, formData.name);
+        const { error } = await signUp(formData.email, formData.password, {
+          ko: formData.nameKo.trim(),
+          en: formData.nameEn.trim(),
+        });
         if (error) {
           if (error.message.includes('User already registered')) {
             toast.error('이미 가입된 이메일입니다');
@@ -204,235 +155,126 @@ export default function Auth() {
           </p>
         </div>
 
-        {/* Auth Method Toggle */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={authMethod === 'phone' ? 'default' : 'outline'}
-            className="flex-1"
-            onClick={() => { setAuthMethod('phone'); setOtpSent(false); setOtpCode(''); }}
-          >
-            <Phone className="w-4 h-4 mr-2" />
-            전화번호
-          </Button>
-          <Button
-            variant={authMethod === 'email' ? 'default' : 'outline'}
-            className="flex-1"
-            onClick={() => setAuthMethod('email')}
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            이메일
-          </Button>
-        </div>
+        <form onSubmit={handleEmailSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-secondary/30 p-3 text-xs text-muted-foreground leading-relaxed">
+                이 이름은 이력서 상단에 자동으로 들어갑니다. <span className="text-foreground font-medium">정확한 이름</span>을 입력해주세요.
+              </div>
 
-        {authMethod === 'phone' ? (
-          <div className="space-y-4">
-            {!otpSent ? (
-              <>
+              <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">전화번호</Label>
+                  <Label htmlFor="nameKo">국문 이름</Label>
                   <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                    placeholder="01012345678"
+                    id="nameKo"
+                    value={formData.nameKo}
+                    onChange={(e) => setFormData({ ...formData, nameKo: e.target.value })}
+                    placeholder="홍길동"
                     disabled={isSubmitting}
-                    maxLength={11}
+                    autoComplete="name"
                   />
-                  {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                  {errors.nameKo && <p className="text-xs text-destructive">{errors.nameKo}</p>}
                 </div>
 
-                {mode === 'signup' && (
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-start gap-2">
-                      <Checkbox
-                        id="terms"
-                        checked={formData.termsAgreed}
-                        onCheckedChange={(checked) =>
-                          setFormData({ ...formData, termsAgreed: checked as boolean })
-                        }
-                        disabled={isSubmitting}
-                      />
-                      <label htmlFor="terms" className="text-sm text-muted-foreground leading-tight">
-                        <Link to="/terms" className="text-primary font-medium hover:underline">이용약관</Link>에 동의합니다 (필수)
-                      </label>
-                    </div>
-                    {errors.termsAgreed && <p className="text-xs text-destructive ml-6">{errors.termsAgreed}</p>}
-
-                    <div className="flex items-start gap-2">
-                      <Checkbox
-                        id="privacy"
-                        checked={formData.privacyAgreed}
-                        onCheckedChange={(checked) =>
-                          setFormData({ ...formData, privacyAgreed: checked as boolean })
-                        }
-                        disabled={isSubmitting}
-                      />
-                      <label htmlFor="privacy" className="text-sm text-muted-foreground leading-tight">
-                        <Link to="/privacy" className="text-primary font-medium hover:underline">개인정보처리방침</Link>에 동의합니다 (필수)
-                      </label>
-                    </div>
-                    {errors.privacyAgreed && <p className="text-xs text-destructive ml-6">{errors.privacyAgreed}</p>}
-
-                    <p className="text-xs text-muted-foreground pt-1">
-                      수집 항목: 전화번호 (개인정보보호법 제30조 준수)
-                    </p>
-                  </div>
-                )}
-
-                <Button 
-                  className="w-full" 
-                  onClick={handlePhoneSubmit} 
-                  disabled={isSubmitting || !phoneValid}
-                >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  인증번호 받기
-                </Button>
-              </>
-            ) : (
-              <>
                 <div className="space-y-2">
-                  <Label>인증번호 (6자리)</Label>
-                  <div className="flex justify-center">
-                    <InputOTP
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={setOtpCode}
-                      disabled={isSubmitting}
-                    >
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    {formData.phone}로 발송된 인증번호를 입력하세요
-                  </p>
+                  <Label htmlFor="nameEn">영문 이름</Label>
+                  <Input
+                    id="nameEn"
+                    value={formData.nameEn}
+                    onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
+                    placeholder="Minjoo Cho"
+                    disabled={isSubmitting}
+                  />
+                  {errors.nameEn && <p className="text-xs text-destructive">{errors.nameEn}</p>}
                 </div>
+              </div>
+            </div>
+          )}
 
-                <Button 
-                  className="w-full" 
-                  onClick={handleOtpVerify} 
-                  disabled={isSubmitting || otpCode.length !== 6}
-                >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  인증 확인
-                </Button>
-
-                <Button 
-                  variant="ghost" 
-                  className="w-full" 
-                  onClick={() => { setOtpSent(false); setOtpCode(''); }}
-                >
-                  다시 보내기
-                </Button>
-              </>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="email">이메일</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="email@example.com"
+              disabled={isSubmitting}
+            />
+            {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
           </div>
-        ) : (
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <div className="space-y-2">
-                <Label htmlFor="name">이름</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="홍길동"
+
+          <div className="space-y-2">
+            <Label htmlFor="password">비밀번호</Label>
+            <Input
+              id="password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="6자 이상 입력"
+              disabled={isSubmitting}
+            />
+            {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+          </div>
+
+          {mode === 'login' && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-xs text-primary hover:underline"
+                disabled={isSubmitting}
+              >
+                비밀번호 찾기
+              </button>
+            </div>
+          )}
+
+          {mode === 'signup' && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="termsEmail"
+                  checked={formData.termsAgreed}
+                  onCheckedChange={(checked) => setFormData({ ...formData, termsAgreed: checked as boolean })}
                   disabled={isSubmitting}
                 />
-                {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                <label htmlFor="termsEmail" className="text-sm text-muted-foreground leading-tight">
+                  <Link to="/terms" className="text-primary font-medium hover:underline">
+                    이용약관
+                  </Link>
+                  에 동의합니다 (필수)
+                </label>
               </div>
-            )}
+              {errors.termsAgreed && <p className="text-xs text-destructive ml-6">{errors.termsAgreed}</p>}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">이메일</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@example.com"
-                disabled={isSubmitting}
-              />
-              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">비밀번호</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="6자 이상 입력"
-                disabled={isSubmitting}
-              />
-              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
-            </div>
-
-            {mode === 'login' && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-xs text-primary hover:underline"
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="privacyEmail"
+                  checked={formData.privacyAgreed}
+                  onCheckedChange={(checked) => setFormData({ ...formData, privacyAgreed: checked as boolean })}
                   disabled={isSubmitting}
-                >
-                  비밀번호 찾기
-                </button>
+                />
+                <label htmlFor="privacyEmail" className="text-sm text-muted-foreground leading-tight">
+                  <Link to="/privacy" className="text-primary font-medium hover:underline">
+                    개인정보처리방침
+                  </Link>
+                  에 동의합니다 (필수)
+                </label>
               </div>
-            )}
+              {errors.privacyAgreed && <p className="text-xs text-destructive ml-6">{errors.privacyAgreed}</p>}
 
-            {mode === 'signup' && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="termsEmail"
-                    checked={formData.termsAgreed}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, termsAgreed: checked as boolean })
-                    }
-                    disabled={isSubmitting}
-                  />
-                  <label htmlFor="termsEmail" className="text-sm text-muted-foreground leading-tight">
-                    <Link to="/terms" className="text-primary font-medium hover:underline">이용약관</Link>에 동의합니다 (필수)
-                  </label>
-                </div>
-                {errors.termsAgreed && <p className="text-xs text-destructive ml-6">{errors.termsAgreed}</p>}
+              <p className="text-xs text-muted-foreground pt-1">
+                수집 항목: 이메일, 비밀번호, 국문/영문 이름 (개인정보보호법 제30조 준수)
+              </p>
+            </div>
+          )}
 
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="privacyEmail"
-                    checked={formData.privacyAgreed}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, privacyAgreed: checked as boolean })
-                    }
-                    disabled={isSubmitting}
-                  />
-                  <label htmlFor="privacyEmail" className="text-sm text-muted-foreground leading-tight">
-                    <Link to="/privacy" className="text-primary font-medium hover:underline">개인정보처리방침</Link>에 동의합니다 (필수)
-                  </label>
-                </div>
-                {errors.privacyAgreed && <p className="text-xs text-destructive ml-6">{errors.privacyAgreed}</p>}
-
-                <p className="text-xs text-muted-foreground pt-1">
-                  수집 항목: 이메일, 비밀번호, 이름 (개인정보보호법 제30조 준수)
-                </p>
-              </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {mode === 'login' ? '로그인' : '회원가입'}
-            </Button>
-          </form>
-        )}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {mode === 'login' ? '로그인' : '회원가입'}
+          </Button>
+        </form>
 
         <div className="text-center mt-6">
           <button
@@ -440,8 +282,6 @@ export default function Auth() {
             onClick={() => {
               setMode(mode === 'login' ? 'signup' : 'login');
               setErrors({});
-              setOtpSent(false);
-              setOtpCode('');
             }}
             className="text-sm text-primary hover:underline"
             disabled={isSubmitting}
