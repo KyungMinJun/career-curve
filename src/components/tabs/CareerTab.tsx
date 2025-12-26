@@ -59,6 +59,7 @@ export function CareerTab() {
   const [logResumeId, setLogResumeId] = useState<string | null>(null);
   const [showUploadWarning, setShowUploadWarning] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showResumePreview, setShowResumePreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Board → Career 이동 이벤트 처리
@@ -317,6 +318,16 @@ export function CareerTab() {
                       <Upload className="w-4 h-4 mr-2" />
                     )}
                     업로드 (PDF)
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    disabled={experiences.length === 0}
+                    onClick={() => setShowResumePreview(true)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    미리보기
                   </Button>
 
                   <Button 
@@ -615,6 +626,27 @@ export function CareerTab() {
         open={!!previewingTailoredResume}
         onOpenChange={(open) => !open && setPreviewingTailoredResume(null)}
         userName={userName}
+      />
+
+      {/* Resume Preview Dialog (경력탭 이력서 미리보기) */}
+      <ResumePreviewDialog
+        open={showResumePreview}
+        onOpenChange={setShowResumePreview}
+        userName={userName}
+        experiences={experiences}
+        onExport={async () => {
+          setIsExporting(true);
+          try {
+            await exportResumeToDocx({ userName, experiences });
+            toast.success('이력서가 다운로드되었습니다');
+          } catch (err) {
+            console.error('Export error:', err);
+            toast.error('이력서 추출에 실패했습니다');
+          } finally {
+            setIsExporting(false);
+          }
+        }}
+        isExporting={isExporting}
       />
 
       {/* Resume Upload Warning Dialog */}
@@ -1026,7 +1058,7 @@ function TailoredResumePreviewDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Separate AI Feedback Dialog */}
+      {/* Separate AI Feedback Dialog with enhanced formatting */}
       <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
         <DialogContent className="max-w-[92%] max-h-[80vh] rounded-2xl">
           <DialogHeader>
@@ -1041,11 +1073,7 @@ function TailoredResumePreviewDialog({
           
           <div className="space-y-4">
             <div className="bg-accent/30 rounded-lg p-4 text-sm text-foreground leading-relaxed max-h-[50vh] overflow-y-auto">
-              {resume.aiFeedback?.split('\n').map((line, i) => (
-                <p key={i} className={line.trim() ? 'mb-2' : 'mb-1'}>
-                  {line}
-                </p>
-              ))}
+              <FormattedFeedback content={resume.aiFeedback || ''} />
             </div>
             
             <Button variant="outline" className="w-full" onClick={() => setShowFeedback(false)}>
@@ -1102,6 +1130,245 @@ function TailoredResumeEditDialog({
               저장
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Markdown-like formatting component for AI feedback
+function FormattedFeedback({ content }: { content: string }) {
+  // Parse markdown-like content into formatted elements
+  const formatLine = (line: string, idx: number) => {
+    // Headers (## or ###)
+    if (line.startsWith('### ')) {
+      return (
+        <h4 key={idx} className="font-semibold text-base text-foreground mt-4 mb-2 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+          {line.replace('### ', '')}
+        </h4>
+      );
+    }
+    if (line.startsWith('## ')) {
+      return (
+        <h3 key={idx} className="font-bold text-lg text-foreground mt-4 mb-2 border-b border-border pb-1">
+          {line.replace('## ', '')}
+        </h3>
+      );
+    }
+    if (line.startsWith('# ')) {
+      return (
+        <h2 key={idx} className="font-bold text-xl text-foreground mt-4 mb-3">
+          {line.replace('# ', '')}
+        </h2>
+      );
+    }
+
+    // Bullet points
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      const text = line.replace(/^[-•]\s*/, '');
+      return (
+        <li key={idx} className="flex gap-2 mb-1.5 ml-2">
+          <span className="text-primary mt-0.5">•</span>
+          <span>{formatInlineText(text)}</span>
+        </li>
+      );
+    }
+
+    // Numbered lists
+    const numberedMatch = line.match(/^(\d+)\.\s+(.+)/);
+    if (numberedMatch) {
+      return (
+        <li key={idx} className="flex gap-2 mb-1.5 ml-2">
+          <span className="text-primary font-medium min-w-[1.2rem]">{numberedMatch[1]}.</span>
+          <span>{formatInlineText(numberedMatch[2])}</span>
+        </li>
+      );
+    }
+
+    // Empty line
+    if (!line.trim()) {
+      return <div key={idx} className="h-2" />;
+    }
+
+    // Regular paragraph with inline formatting
+    return (
+      <p key={idx} className="mb-2">
+        {formatInlineText(line)}
+      </p>
+    );
+  };
+
+  // Format bold (**text**) and inline code (`code`)
+  const formatInlineText = (text: string) => {
+    const parts: React.ReactNode[] = [];
+    let remaining = text;
+    let keyIndex = 0;
+
+    // Process **bold** text
+    while (remaining) {
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+      if (boldMatch && boldMatch.index !== undefined) {
+        // Text before bold
+        if (boldMatch.index > 0) {
+          parts.push(<span key={keyIndex++}>{remaining.slice(0, boldMatch.index)}</span>);
+        }
+        // Bold text
+        parts.push(
+          <strong key={keyIndex++} className="font-semibold text-foreground">
+            {boldMatch[1]}
+          </strong>
+        );
+        remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
+      } else {
+        parts.push(<span key={keyIndex++}>{remaining}</span>);
+        break;
+      }
+    }
+
+    return parts;
+  };
+
+  const lines = content.split('\n');
+
+  return (
+    <div className="space-y-0.5">
+      {lines.map((line, idx) => formatLine(line, idx))}
+    </div>
+  );
+}
+
+// Resume Preview Dialog for Career Tab - shows experiences in resume format
+function ResumePreviewDialog({
+  open,
+  onOpenChange,
+  userName,
+  experiences,
+  onExport,
+  isExporting,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userName: string;
+  experiences: Experience[];
+  onExport: () => void;
+  isExporting: boolean;
+}) {
+  const workExperiences = experiences.filter((e) => e.type === 'work');
+  const projectExperiences = experiences.filter((e) => e.type === 'project');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[92%] max-h-[85vh] rounded-2xl flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            이력서 미리보기
+          </DialogTitle>
+          <DialogDescription>
+            경력 & Selected Projects 기반 이력서
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 shadow-inner min-h-[300px]">
+          {/* Name Header */}
+          <h1 className="text-2xl font-bold text-center text-foreground mb-6 border-b-2 border-foreground pb-2">
+            {userName || '이름'}
+          </h1>
+
+          {/* Work Experience */}
+          {workExperiences.length > 0 && (
+            <section className="mb-6">
+              <h2 className="text-lg font-bold text-foreground mb-3 border-b border-border pb-1">
+                WORK EXPERIENCE
+              </h2>
+              <div className="space-y-4">
+                {workExperiences.map((exp) => (
+                  <div key={exp.id}>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="font-semibold text-foreground">{exp.title}</span>
+                      {exp.company && (
+                        <span className="text-muted-foreground">| {exp.company}</span>
+                      )}
+                    </div>
+                    {exp.period && (
+                      <p className="text-sm text-muted-foreground mb-1">{exp.period}</p>
+                    )}
+                    {exp.description && (
+                      <p className="text-sm text-foreground mb-1">{exp.description}</p>
+                    )}
+                    {exp.bullets && exp.bullets.length > 0 && (
+                      <ul className="text-sm space-y-0.5 ml-4">
+                        {exp.bullets.filter((b) => b.trim()).map((bullet, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="text-primary">•</span>
+                            <span className="text-foreground">{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Projects */}
+          {projectExperiences.length > 0 && (
+            <section>
+              <h2 className="text-lg font-bold text-foreground mb-3 border-b border-border pb-1">
+                SELECTED PROJECTS
+              </h2>
+              <div className="space-y-4">
+                {projectExperiences.map((exp) => (
+                  <div key={exp.id}>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="font-semibold text-foreground">{exp.title}</span>
+                      {exp.company && (
+                        <span className="text-muted-foreground">| {exp.company}</span>
+                      )}
+                    </div>
+                    {exp.period && (
+                      <p className="text-sm text-muted-foreground mb-1">{exp.period}</p>
+                    )}
+                    {exp.description && (
+                      <p className="text-sm text-foreground mb-1">{exp.description}</p>
+                    )}
+                    {exp.bullets && exp.bullets.length > 0 && (
+                      <ul className="text-sm space-y-0.5 ml-4">
+                        {exp.bullets.filter((b) => b.trim()).map((bullet, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="text-primary">•</span>
+                            <span className="text-foreground">{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {experiences.length === 0 && (
+            <p className="text-center text-muted-foreground py-8">
+              경력 또는 프로젝트를 추가하면 여기에 표시됩니다.
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2 mt-3">
+          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+            닫기
+          </Button>
+          <Button className="flex-1" onClick={onExport} disabled={isExporting || experiences.length === 0}>
+            {isExporting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            DOCX 다운로드
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

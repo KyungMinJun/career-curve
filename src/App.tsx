@@ -16,11 +16,24 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function AppWithProviders() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  
+  // Wait for auth to be determined before rendering anything that uses storage
+  // This prevents loading wrong user's data during the auth check
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">로딩 중...</div>
+      </div>
+    );
+  }
+  
+  // Use user.id if logged in, otherwise use a truly anonymous key
+  // CRITICAL: Each user MUST have their own isolated storage
   const storageKey = user?.id ? `jobflow-storage:${user.id}` : 'jobflow-storage:anon';
 
   return (
-    <JobStoreProvider storageKey={storageKey}>
+    <JobStoreProvider key={storageKey} storageKey={storageKey}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
