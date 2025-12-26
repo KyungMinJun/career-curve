@@ -127,7 +127,7 @@ export function BoardTab() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="px-4 pt-safe-top pb-4 bg-background safe-top">
+      <header className="px-4 pb-4 bg-background safe-top-lg">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <img src={logoImage} alt="커브 로고" className="w-6 h-6 object-contain" loading="eager" />

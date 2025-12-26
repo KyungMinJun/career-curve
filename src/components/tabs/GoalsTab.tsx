@@ -74,17 +74,25 @@ function isGoalEnded(goal: CareerGoal | null): boolean {
 }
 
 export function GoalsTab() {
-  const { currentGoal, setGoal, goalHistory, archiveGoal, removeGoalHistory } = useJobStore();
-  const [isEditingGoals, setIsEditingGoals] = useState(false);
+  const { currentGoals, addGoal, updateGoal, removeGoal, goalHistory, archiveGoal, removeGoalHistory } = useJobStore();
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  // If currentGoal has endDate, it should be treated as "no current goal"
-  const hasActiveGoal = currentGoal && !isGoalEnded(currentGoal);
+  // Filter out goals that have endDate (they should be archived)
+  const activeGoals = currentGoals.filter((g) => !isGoalEnded(g));
 
-  const startDate = hasActiveGoal ? new Date(currentGoal.startDate) : null;
-  const daysSinceStart = startDate
-    ? Math.floor((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+  const handleAddNewGoal = () => {
+    const newGoal = createBlankGoal();
+    addGoal(newGoal);
+    setEditingGoalId(newGoal.id);
+    setIsAddingNew(true);
+  };
+
+  const handleArchiveGoal = (goal: CareerGoal) => {
+    archiveGoal({ ...goal, endDate: goal.endDate ?? new Date(), updatedAt: new Date() });
+    removeGoal(goal.id);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -95,14 +103,7 @@ export function GoalsTab() {
           <Button
             variant="default"
             size="sm"
-            onClick={() => {
-              // Archive current goal if it has content
-              if (hasActiveGoal && hasGoalContent(currentGoal)) {
-                archiveGoal({ ...currentGoal, endDate: currentGoal.endDate ?? new Date(), updatedAt: new Date() });
-              }
-              setGoal(createBlankGoal());
-              setIsEditingGoals(true);
-            }}
+            onClick={handleAddNewGoal}
           >
             <Target className="w-4 h-4 mr-2" />
             새 목표
@@ -111,96 +112,119 @@ export function GoalsTab() {
       />
 
       <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide">
-        {/* Current Goal Card */}
+        {/* Current Goals Cards */}
         <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
                 <h2 className="font-semibold text-foreground">현재 목표</h2>
+                {activeGoals.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{activeGoals.length}</Badge>
+                )}
               </div>
-              {hasActiveGoal && (
-                <Badge variant="secondary" className="text-xs">
-                  {daysSinceStart}일째
-                </Badge>
-              )}
             </div>
           </div>
 
-          {hasActiveGoal ? (
-            <div className="p-4 space-y-4">
-              {/* Search Period */}
-              <div className="flex items-center gap-2 bg-primary/10 rounded-lg p-3">
-                <Calendar className="w-4 h-4 text-primary" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">현재 목표 기간</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {formatKoreanDate(currentGoal.startDate)}~
-                  </p>
-                </div>
-              </div>
-
-              {/* Reason */}
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">이직 이유</p>
-                <p className="text-sm text-foreground">{currentGoal.reason || '아직 입력되지 않았습니다'}</p>
-                {currentGoal.careerPath && (
-                  <p className="text-xs text-primary">{currentGoal.careerPath}</p>
-                )}
-              </div>
-
-              {/* Result */}
-              {currentGoal.result && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">결과</p>
-                  <p className="text-sm text-foreground">{currentGoal.result}</p>
-                </div>
-              )}
-
-              {/* Company Eval Criteria - Priority Order */}
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                  회사 평가 기준 (우선순위)
-                </p>
-                <div className="space-y-2">
-                  {[...currentGoal.companyEvalCriteria]
-                    .sort((a, b) => b.weight - a.weight)
-                    .map((c, i) => (
-                      <div key={i} className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
-                            {i + 1}
-                          </span>
-                          <span className="flex-1 text-foreground">{c.name}</span>
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <div
-                                key={n}
-                                className={cn(
-                                  'w-2 h-2 rounded-full',
-                                  n <= c.weight ? 'bg-primary' : 'bg-muted'
-                                )}
-                              />
-                            ))}
-                          </div>
+          {activeGoals.length > 0 ? (
+            <div className="divide-y divide-border">
+              {activeGoals.map((goal) => {
+                const startDate = new Date(goal.startDate);
+                const daysSinceStart = Math.floor((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                return (
+                  <div key={goal.id} className="p-4 space-y-4">
+                    {/* Period Badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2">
+                        <Calendar className="w-4 h-4 text-primary" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">목표 기간</p>
+                          <p className="text-sm font-medium text-foreground">
+                            {formatKoreanDate(goal.startDate)}~
+                          </p>
                         </div>
-                        {c.description && (
-                          <p className="text-xs text-muted-foreground ml-7">{c.description}</p>
-                        )}
                       </div>
-                    ))}
-                </div>
-              </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {daysSinceStart}일째
+                      </Badge>
+                    </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => setIsEditingGoals(true)}
-              >
-                <Edit2 className="w-4 h-4 mr-2" />
-                목표 수정
-              </Button>
+                    {/* Reason */}
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">이직 이유</p>
+                      <p className="text-sm text-foreground">{goal.reason || '아직 입력되지 않았습니다'}</p>
+                      {goal.careerPath && (
+                        <p className="text-xs text-primary">{goal.careerPath}</p>
+                      )}
+                    </div>
+
+                    {/* Result */}
+                    {goal.result && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">결과</p>
+                        <p className="text-sm text-foreground">{goal.result}</p>
+                      </div>
+                    )}
+
+                    {/* Company Eval Criteria - Priority Order */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                        회사 평가 기준 (우선순위)
+                      </p>
+                      <div className="space-y-2">
+                        {[...goal.companyEvalCriteria]
+                          .sort((a, b) => b.weight - a.weight)
+                          .map((c, i) => (
+                            <div key={i} className="space-y-1">
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                                  {i + 1}
+                                </span>
+                                <span className="flex-1 text-foreground">{c.name}</span>
+                                <div className="flex gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((n) => (
+                                    <div
+                                      key={n}
+                                      className={cn(
+                                        'w-2 h-2 rounded-full',
+                                        n <= c.weight ? 'bg-primary' : 'bg-muted'
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              {c.description && (
+                                <p className="text-xs text-muted-foreground ml-7">{c.description}</p>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setEditingGoalId(goal.id)}
+                      >
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        수정
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={() => handleArchiveGoal(goal)}
+                      >
+                        <History className="w-4 h-4 mr-2" />
+                        기록으로
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="p-8 text-center">
@@ -259,9 +283,9 @@ export function GoalsTab() {
                               size="icon"
                               className="w-7 h-7"
                               onClick={() => {
-                                setGoal(record.goal);
+                                addGoal(record.goal);
                                 removeGoalHistory(record.id);
-                                setIsEditingGoals(true);
+                                setEditingGoalId(record.goal.id);
                               }}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -297,24 +321,37 @@ export function GoalsTab() {
       </div>
 
       {/* Goals Edit Dialog */}
-      {(hasActiveGoal || isEditingGoals) && currentGoal && (
+      {editingGoalId && (
         <GoalsEditDialog
-          open={isEditingGoals}
-          onOpenChange={setIsEditingGoals}
-          goal={currentGoal}
+          open={!!editingGoalId}
+          onOpenChange={(open) => {
+            if (!open) {
+              // If adding new and cancelled without content, remove it
+              if (isAddingNew) {
+                const editingGoal = currentGoals.find((g) => g.id === editingGoalId);
+                if (editingGoal && !hasGoalContent(editingGoal)) {
+                  removeGoal(editingGoalId);
+                }
+              }
+              setEditingGoalId(null);
+              setIsAddingNew(false);
+            }
+          }}
+          goal={currentGoals.find((g) => g.id === editingGoalId)!}
           onSave={(newGoal) => {
-            // 종료일이 입력되면 자동으로 "이전 기록"으로 이동 + 현재 목표 비우기
+            // 종료일이 입력되면 자동으로 "이전 기록"으로 이동
             if (newGoal.endDate) {
               archiveGoal(newGoal);
-              setGoal(createBlankGoal());
-              // Set endDate on the blank goal to indicate no active goal
-              setGoal({ ...createBlankGoal(), endDate: new Date() });
+              removeGoal(newGoal.id);
               setHistoryOpen(true);
-              setIsEditingGoals(false);
+              setEditingGoalId(null);
+              setIsAddingNew(false);
               return;
             }
 
-            setGoal(newGoal);
+            updateGoal(newGoal.id, newGoal);
+            setEditingGoalId(null);
+            setIsAddingNew(false);
           }}
         />
       )}

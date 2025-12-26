@@ -227,7 +227,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="px-4 pt-safe-top pb-3 border-b border-border bg-background/95 backdrop-blur-sm safe-top">
+      <header className="px-4 pb-4 bg-background safe-top-lg">
         <div className="flex items-center gap-2">
           <img src={logoImage} alt="Logo" className="w-6 h-6 object-contain" />
           <h1 className="text-xl font-bold text-foreground">채팅</h1>

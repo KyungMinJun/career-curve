@@ -34,12 +34,18 @@ interface JobStore {
   updateTailoredResume: (id: string, updates: Partial<TailoredResume>) => void;
   removeTailoredResume: (id: string) => void;
 
-  // Goals
-  currentGoal: CareerGoal | null;
-  setGoal: (goal: CareerGoal) => void;
+  // Goals - 복수 목표 지원
+  currentGoals: CareerGoal[];
+  addGoal: (goal: CareerGoal) => void;
+  updateGoal: (id: string, updates: Partial<CareerGoal>) => void;
+  removeGoal: (id: string) => void;
   goalHistory: GoalHistory[];
   archiveGoal: (goal: CareerGoal) => void;
   removeGoalHistory: (id: string) => void;
+  
+  // Legacy compatibility
+  currentGoal: CareerGoal | null;
+  setGoal: (goal: CareerGoal) => void;
 
   // User info
   userName: string; // display name (derived)
@@ -103,31 +109,33 @@ const createJobStore = (storageKey: string) =>
           })),
         removeTailoredResume: (id) => set((state) => ({ tailoredResumes: state.tailoredResumes.filter((r) => r.id !== id) })),
 
-        // Goals
-        currentGoal: {
-          id: '1',
-          type: 'immediate',
-          reason: '',
-          searchPeriod: '3개월',
-          companyEvalCriteria: [
-            { name: '성장 가능성', weight: 5 },
-            { name: '기술 스택', weight: 4 },
-            { name: '보상', weight: 4 },
-            { name: '워라밸', weight: 3 },
-            { name: '회사 문화', weight: 4 },
-          ],
-          startDate: new Date(),
-          endDate: undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        setGoal: (goal) => set({ currentGoal: goal }),
+        // Goals - 복수 목표 지원
+        currentGoals: [],
+        addGoal: (goal) => set((state) => ({ currentGoals: [...state.currentGoals, goal] })),
+        updateGoal: (id, updates) =>
+          set((state) => ({
+            currentGoals: state.currentGoals.map((g) => (g.id === id ? { ...g, ...updates, updatedAt: new Date() } : g)),
+          })),
+        removeGoal: (id) => set((state) => ({ currentGoals: state.currentGoals.filter((g) => g.id !== id) })),
         goalHistory: [],
         archiveGoal: (goal) =>
           set((state) => ({
             goalHistory: [...state.goalHistory, { id: Date.now().toString(), goal, archivedAt: new Date() }],
           })),
         removeGoalHistory: (id) => set((state) => ({ goalHistory: state.goalHistory.filter((h) => h.id !== id) })),
+        
+        // Legacy compatibility - currentGoal은 첫 번째 목표 반환
+        get currentGoal() {
+          return null; // getter는 persist에서 처리
+        },
+        setGoal: (goal) => set((state) => {
+          // 기존 목표가 있으면 업데이트, 없으면 추가
+          const exists = state.currentGoals.find((g) => g.id === goal.id);
+          if (exists) {
+            return { currentGoals: state.currentGoals.map((g) => (g.id === goal.id ? goal : g)) };
+          }
+          return { currentGoals: [goal, ...state.currentGoals] };
+        }),
 
         // User info
         userName: '사용자',
@@ -149,7 +157,7 @@ const createJobStore = (storageKey: string) =>
             experiences: state.experiences,
             resumes: state.resumes,
             tailoredResumes: state.tailoredResumes,
-            currentGoal: state.currentGoal,
+            currentGoals: state.currentGoals,
             goalHistory: state.goalHistory,
             userName: state.userName,
             userNameKo: state.userNameKo,
@@ -183,15 +191,33 @@ const createJobStore = (storageKey: string) =>
             updatedAt: new Date(r.updatedAt),
             format: (r as any).format ?? (r.language === 'en' ? 'consulting' : 'narrative'),
           }));
-          if (state.currentGoal) {
-            state.currentGoal.createdAt = new Date(state.currentGoal.createdAt);
-            state.currentGoal.updatedAt = new Date(state.currentGoal.updatedAt);
-            state.currentGoal.startDate = new Date((state.currentGoal as any).startDate ?? new Date());
-            state.currentGoal.endDate = (state.currentGoal as any).endDate
-              ? new Date((state.currentGoal as any).endDate)
-              : undefined;
+          
+          // Migrate legacy currentGoal to currentGoals array
+          const legacyGoal = (state as any).currentGoal;
+          if (legacyGoal && (!state.currentGoals || state.currentGoals.length === 0)) {
+            const migratedGoal = {
+              ...legacyGoal,
+              createdAt: new Date(legacyGoal.createdAt),
+              updatedAt: new Date(legacyGoal.updatedAt),
+              startDate: new Date(legacyGoal.startDate ?? new Date()),
+              endDate: legacyGoal.endDate ? new Date(legacyGoal.endDate) : undefined,
+            };
+            // Only add if it has content (not just defaults)
+            if (migratedGoal.reason?.trim() || migratedGoal.careerPath?.trim()) {
+              state.currentGoals = [migratedGoal];
+            }
           }
-          state.goalHistory = state.goalHistory.map((h) => ({
+          
+          // Rehydrate currentGoals dates
+          state.currentGoals = (state.currentGoals || []).map((g) => ({
+            ...g,
+            createdAt: new Date(g.createdAt),
+            updatedAt: new Date(g.updatedAt),
+            startDate: new Date((g as any).startDate ?? new Date()),
+            endDate: (g as any).endDate ? new Date((g as any).endDate) : undefined,
+          }));
+          
+          state.goalHistory = (state.goalHistory || []).map((h) => ({
             ...h,
             archivedAt: new Date(h.archivedAt),
             goal: {

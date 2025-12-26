@@ -38,22 +38,14 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const handleLogout = async () => {
     await signOut();
 
-    // Clear all persisted app data so nothing "lingers" after logout
-    try {
-      const keys = Object.keys(localStorage);
-      keys
-        .filter((k) => k === 'jobflow-storage' || k.startsWith('jobflow-storage'))
-        .forEach((k) => localStorage.removeItem(k));
-    } catch {
-      // ignore
-    }
+    // 로그아웃 시 데이터를 삭제하지 않음 - 유저별 storageKey로 저장되어 있으므로
+    // 다른 유저로 로그인하면 해당 유저의 데이터가 로드됨
 
     toast.success('로그아웃되었습니다');
     onOpenChange(false);
 
-    // Force a clean app state
+    // Navigate to auth page
     navigate('/auth', { replace: true });
-    setTimeout(() => window.location.reload(), 50);
   };
 
   const handleSendPasswordReset = async () => {
