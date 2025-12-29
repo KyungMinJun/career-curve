@@ -168,28 +168,32 @@ serve(async (req) => {
     const systemPrompt = `You are a job posting analyzer. Extract structured information from job postings.
 
 CRITICAL INSTRUCTIONS:
-1. For each field, you MUST provide the exact source sentence from the job posting as evidence.
-2. If a field is not mentioned or cannot be found, set it to null and set evidence to "공고에 명시되지 않음".
-3. For keyCompetencies: Extract EXACTLY 5 key competencies from the RECRUITER'S perspective - what they would prioritize when evaluating candidates.
+1. Determine the original language of the job posting content: Korean (ko) or English (en).
+2. Return the field "language" as either "ko" or "en".
+3. For ALL text fields (companyName, title, position, summary, keyCompetencies.title/description, evidence strings):
+   - Use the SAME language as the original posting.
+   - Evidence must be an exact source sentence from the posting (do not translate evidence).
+4. If a field is not mentioned, set it to null and set evidence to "Not specified" (English) or "공고에 명시되지 않음" (Korean), matching the posting language.
+5. For keyCompetencies: Extract EXACTLY 5 key competencies from the RECRUITER'S perspective.
 
 Extract and return:
+- language: "ko" | "en"
 - companyName: company name
-- title: job title  
-- position: position category like "프론트엔드", "백엔드", "프로덕트 디자인", "PM" etc
-- minExperience: minimum experience required (e.g. "3년 이상", "신입 가능")
-- minExperienceEvidence: exact source sentence from job posting
-- workType: work type ("재택", "출근", "하이브리드")
-- workTypeEvidence: exact source sentence from job posting
-- location: work location
-- locationEvidence: exact source sentence from job posting
+- title: job title
+- position: position category like "Frontend", "Backend", "Product Design", "PM" etc
+- minExperience: minimum experience required (nullable)
+- minExperienceEvidence: exact source sentence
+- workType: work type (nullable)
+- workTypeEvidence: exact source sentence
+- location: work location (nullable)
+- locationEvidence: exact source sentence
 - visaSponsorship: boolean or null (if not mentioned)
-- visaSponsorshipEvidence: exact source sentence or "공고에 명시되지 않음"
-- summary: 3-4 sentence summary of the role in Korean
-- keyCompetencies: array of EXACTLY 5 objects with {title, description} - the must-have experiences and abilities from recruiter's perspective
-- companyScore: number 1-5 (estimated company attractiveness based on benefits, culture)
-- fitScore: number 1-5 (general fit score based on role clarity)
-
-Always respond in Korean for text fields.`;
+- visaSponsorshipEvidence: exact source sentence
+- summary: 3-4 sentence summary of the role (same language as posting)
+- keyCompetencies: array of EXACTLY 5 objects with {title, description}
+- companyScore: number 1-5
+- fitScore: number 1-5
+`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -203,49 +207,50 @@ Always respond in Korean for text fields.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Page title: ${pageTitle}\n\nJob posting content:\n${pageContent.substring(0, 15000)}` }
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_job_posting",
-              description: "Extract structured job posting information with evidence",
-              parameters: {
-                type: "object",
-                properties: {
-                  companyName: { type: "string" },
-                  title: { type: "string" },
-                  position: { type: "string" },
-                  minExperience: { type: "string", nullable: true },
-                  minExperienceEvidence: { type: "string" },
-                  workType: { type: "string", nullable: true },
-                  workTypeEvidence: { type: "string" },
-                  location: { type: "string", nullable: true },
-                  locationEvidence: { type: "string" },
-                  visaSponsorship: { type: "boolean", nullable: true },
-                  visaSponsorshipEvidence: { type: "string" },
-                  summary: { type: "string" },
-                  keyCompetencies: { 
-                    type: "array", 
-                    items: { 
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        description: { type: "string" }
-                      },
-                      required: ["title", "description"]
-                    },
-                    minItems: 5,
-                    maxItems: 5
-                  },
-                  companyScore: { type: "number" },
-                  fitScore: { type: "number" }
-                },
-                required: ["companyName", "title", "position", "summary", "keyCompetencies"],
-                additionalProperties: false
-              }
-            }
-          }
-        ],
+         tools: [
+           {
+             type: "function",
+             function: {
+               name: "extract_job_posting",
+               description: "Extract structured job posting information with evidence",
+               parameters: {
+                 type: "object",
+                 properties: {
+                   language: { type: "string", enum: ["ko", "en"] },
+                   companyName: { type: "string" },
+                   title: { type: "string" },
+                   position: { type: "string" },
+                   minExperience: { type: "string", nullable: true },
+                   minExperienceEvidence: { type: "string" },
+                   workType: { type: "string", nullable: true },
+                   workTypeEvidence: { type: "string" },
+                   location: { type: "string", nullable: true },
+                   locationEvidence: { type: "string" },
+                   visaSponsorship: { type: "boolean", nullable: true },
+                   visaSponsorshipEvidence: { type: "string" },
+                   summary: { type: "string" },
+                   keyCompetencies: {
+                     type: "array",
+                     items: {
+                       type: "object",
+                       properties: {
+                         title: { type: "string" },
+                         description: { type: "string" }
+                       },
+                       required: ["title", "description"]
+                     },
+                     minItems: 5,
+                     maxItems: 5
+                   },
+                   companyScore: { type: "number" },
+                   fitScore: { type: "number" }
+                 },
+                 required: ["language", "companyName", "title", "position", "summary", "keyCompetencies"],
+                 additionalProperties: false
+               }
+             }
+           }
+         ],
         tool_choice: { type: "function", function: { name: "extract_job_posting" } }
       }),
     });

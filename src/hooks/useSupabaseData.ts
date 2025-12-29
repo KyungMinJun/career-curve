@@ -97,6 +97,57 @@ function jobPostingToDb(job: Partial<JobPosting>, userId: string): Record<string
   return result;
 }
 
+function calculateRelativePriorityFromScores({
+  allJobPostings,
+  jobId,
+  companyScore,
+  fitScore,
+}: {
+  allJobPostings: JobPosting[];
+  jobId?: string;
+  companyScore?: number;
+  fitScore?: number;
+}): number {
+  const comp = typeof companyScore === 'number' ? companyScore : 0;
+  const fit = typeof fitScore === 'number' ? fitScore : 0;
+  const count = (comp > 0 ? 1 : 0) + (fit > 0 ? 1 : 0);
+  const thisScore = count > 0 ? (comp + fit) / count : 0;
+
+  // No scores yet → keep as "미평가"
+  if (thisScore === 0) return 0;
+
+  const allScores = allJobPostings
+    .filter((j) => (jobId ? j.id !== jobId : true))
+    .map((j) => {
+      const c = j.companyScore || 0;
+      const f = j.fitScore || 0;
+      const n = (c > 0 ? 1 : 0) + (f > 0 ? 1 : 0);
+      return n > 0 ? (c + f) / n : 0;
+    })
+    .filter((s) => s > 0);
+
+  // If this is the only scored job, assign absolute priority buckets
+  if (allScores.length === 0) {
+    if (thisScore >= 4) return 1;
+    if (thisScore >= 3) return 2;
+    if (thisScore >= 2) return 3;
+    if (thisScore >= 1) return 4;
+    return 5;
+  }
+
+  // Relative bucketing across all scored jobs (including this one)
+  const allWithThis = [...allScores, thisScore].sort((a, b) => b - a);
+  const rank = allWithThis.indexOf(thisScore);
+  const total = allWithThis.length;
+  const percentile = rank / total;
+
+  if (percentile < 0.2) return 1;
+  if (percentile < 0.4) return 2;
+  if (percentile < 0.6) return 3;
+  if (percentile < 0.8) return 4;
+  return 5;
+}
+
 export function useSupabaseData() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -236,22 +287,33 @@ export function useSupabaseData() {
   // Job posting operations
   const addJobPosting = async (posting: Omit<JobPosting, 'id'> & { id?: string }): Promise<string | undefined> => {
     if (!user) return;
-    
+
     const dbData = jobPostingToDb(posting as Partial<JobPosting>, user.id);
     // Don't set id - let DB generate UUID
-    
+
+    // Auto-priority: if scores exist, compute a relative priority bucket.
+    // (If user later adds/updates AI scores, we'll recompute again on update.)
+    const autoPriority = calculateRelativePriorityFromScores({
+      allJobPostings: jobPostings,
+      companyScore: posting.companyScore,
+      fitScore: posting.fitScore,
+    });
+    if ((posting.priority === 0 || posting.priority === undefined) && autoPriority > 0) {
+      dbData.priority = autoPriority;
+    }
+
     const { data, error } = await supabase
       .from('job_postings')
       .insert(dbData as any)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Error adding job posting:', error);
       toast.error('공고 추가 중 오류가 발생했습니다');
       return;
     }
-    
+
     const newPosting = dbToJobPosting(data);
     setJobPostings(prev => [newPosting, ...prev]);
     return newPosting.id;
@@ -259,23 +321,43 @@ export function useSupabaseData() {
 
   const updateJobPosting = async (id: string, updates: Partial<JobPosting>) => {
     if (!user) return;
-    
-    const dbData = jobPostingToDb(updates, user.id);
+
+    const existing = jobPostings.find((j) => j.id === id);
+
+    const scoreTouched =
+      updates.companyScore !== undefined ||
+      updates.fitScore !== undefined ||
+      updates.companyCriteriaScores !== undefined ||
+      updates.keyCompetencies !== undefined;
+
+    const computedPriority = scoreTouched
+      ? calculateRelativePriorityFromScores({
+          allJobPostings: jobPostings,
+          jobId: id,
+          companyScore: updates.companyScore ?? existing?.companyScore,
+          fitScore: updates.fitScore ?? existing?.fitScore,
+        })
+      : undefined;
+
+    const mergedUpdates: Partial<JobPosting> =
+      computedPriority !== undefined ? { ...updates, priority: computedPriority } : updates;
+
+    const dbData = jobPostingToDb(mergedUpdates, user.id);
     delete dbData.user_id; // Don't update user_id
-    
+
     const { error } = await supabase
       .from('job_postings')
       .update(dbData)
       .eq('id', id);
-    
+
     if (error) {
       console.error('Error updating job posting:', error);
       toast.error('공고 업데이트 중 오류가 발생했습니다');
       return;
     }
-    
-    setJobPostings(prev => 
-      prev.map(p => p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p)
+
+    setJobPostings(prev =>
+      prev.map(p => (p.id === id ? { ...p, ...mergedUpdates, updatedAt: new Date() } : p))
     );
   };
 
@@ -474,25 +556,28 @@ export function useSupabaseData() {
 
   const updateResume = async (id: string, updates: Partial<Resume>) => {
     if (!user) return;
-    
+
     const dbUpdates: Record<string, any> = {};
     if (updates.parseStatus !== undefined) dbUpdates.parse_status = updates.parseStatus;
     if (updates.parseError !== undefined) dbUpdates.parse_error = updates.parseError;
     if (updates.extractedText !== undefined) dbUpdates.extracted_text = updates.extractedText;
     if (updates.ocrText !== undefined) dbUpdates.ocr_text = updates.ocrText;
     if (updates.parsedAt !== undefined) dbUpdates.parsed_at = updates.parsedAt?.toISOString();
-    
+
+    // If there's nothing to persist, don't call the backend (it can throw "no values" errors).
+    if (Object.keys(dbUpdates).length === 0) return;
+
     const { error } = await supabase
       .from('resumes')
       .update(dbUpdates)
       .eq('id', id);
-    
+
     if (error) {
       console.error('Error updating resume:', error);
       toast.error('이력서 업데이트 중 오류가 발생했습니다');
       return;
     }
-    
+
     setResumes(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   };
 

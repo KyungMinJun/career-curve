@@ -343,6 +343,8 @@ For each position use:
 
 IMPORTANT: Do NOT use emojis in the resume body.`;
 
+    const model = language === "en" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -350,7 +352,7 @@ IMPORTANT: Do NOT use emojis in the resume body.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
