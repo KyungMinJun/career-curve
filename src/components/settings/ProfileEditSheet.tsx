@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useJobStore } from '@/stores/jobStore';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -19,7 +19,8 @@ interface ProfileEditSheetProps {
 }
 
 export function ProfileEditSheet({ open, onOpenChange }: ProfileEditSheetProps) {
-  const { userName, setUserName } = useJobStore();
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.name_ko || user?.user_metadata?.name_en || user?.email || '사용자';
   const [name, setName] = useState(userName);
   const [email, setEmail] = useState('');
 
@@ -32,9 +33,12 @@ export function ProfileEditSheet({ open, onOpenChange }: ProfileEditSheetProps) 
     }
   }, [open]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (name.trim()) {
-      setUserName(name.trim());
+      // Update profile in Supabase
+      if (user) {
+        await supabase.from('profiles').update({ name: name.trim() }).eq('user_id', user.id);
+      }
       toast.success('개인정보가 저장되었습니다');
       onOpenChange(false);
     }

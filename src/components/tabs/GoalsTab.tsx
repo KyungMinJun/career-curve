@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -74,7 +74,8 @@ function isGoalEnded(goal: CareerGoal | null): boolean {
 }
 
 export function GoalsTab() {
-  const { currentGoals, addGoal, updateGoal, removeGoal, goalHistory, archiveGoal, removeGoalHistory } = useJobStore();
+  const { currentGoals, addGoal, updateGoal, removeGoal } = useData();
+  const [goalHistory, setGoalHistory] = useState<any[]>([]); // Local state for history since not in DB yet
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -90,6 +91,14 @@ export function GoalsTab() {
     setIsAddingNew(true);
     // 바로 추가하지 않고 임시로 저장 - 저장 시에 addGoal 호출
     setPendingNewGoal(newGoal);
+  };
+
+  const archiveGoal = (goal: CareerGoal) => {
+    setGoalHistory(prev => [...prev, { id: Date.now().toString(), goal, archivedAt: new Date() }]);
+  };
+
+  const removeGoalHistory = (id: string) => {
+    setGoalHistory(prev => prev.filter(h => h.id !== id));
   };
 
   const handleArchiveGoal = (goal: CareerGoal) => {

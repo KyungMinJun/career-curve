@@ -3,7 +3,8 @@ import { LayoutGrid, Table2, Filter, ArrowUpDown, ChevronDown, ChevronRight, Che
 import logoImage from '@/assets/logo.png';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/hooks/useAuth';
 import { JobCard } from '@/components/board/JobCard';
 import { JobDetailDialog } from '@/components/board/JobDetailDialog';
 import { TableView } from '@/components/board/TableView';
@@ -76,7 +77,10 @@ export function BoardTab() {
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [sortOption, setSortOption] = useState<SortOption>('priority');
   const [filters, setFiltersState] = useState<FilterState>(loadSavedFilters);
-  const { jobPostings, userName, currentGoal, updateJobPosting } = useJobStore();
+  const { jobPostings, currentGoals, updateJobPosting } = useData();
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.name_ko || user?.user_metadata?.name_en || user?.email || '사용자';
+  const currentGoal = currentGoals[0] ?? null;
 
   // Persist filters to localStorage
   const setFilters = (updater: FilterState | ((prev: FilterState) => FilterState)) => {
@@ -316,7 +320,7 @@ export function BoardTab() {
       {/* Content */}
       <div className="flex-1 overflow-hidden pb-20">
         {viewMode === 'kanban' ? (
-          <KanbanView groupedByStatus={groupedByStatus} onDropOnColumn={handleDropOnColumn} />
+          <KanbanView groupedByStatus={groupedByStatus} onDropOnColumn={handleDropOnColumn} allJobs={jobPostings} />
         ) : (
           <TableView jobs={sortedJobs} />
         )}
@@ -328,9 +332,11 @@ export function BoardTab() {
 function KanbanView({ 
   groupedByStatus,
   onDropOnColumn,
+  allJobs,
 }: { 
   groupedByStatus: Record<JobStatus, JobPosting[]>;
   onDropOnColumn: (jobId: string, newStatus: JobStatus) => void;
+  allJobs: JobPosting[];
 }) {
   const [showClosed, setShowClosed] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -340,7 +346,7 @@ function KanbanView({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  const selectedJob = useJobStore((s) => (selectedJobId ? s.jobPostings.find((j) => j.id === selectedJobId) ?? null : null));
+  const selectedJob = selectedJobId ? allJobs.find((j) => j.id === selectedJobId) ?? null : null;
 
   const handleDragStart = (e: React.DragEvent, jobId: string) => {
     setDraggedJobId(jobId);

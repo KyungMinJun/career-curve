@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, MoreVertical, Trash2, Edit2 } from 'lucide-react';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +35,7 @@ interface JobCardProps {
 
 export function JobCard({ job, onClick }: JobCardProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const { removeJobPosting, updateJobPosting } = useJobStore();
+  const { removeJobPosting, updateJobPosting } = useData();
 
   const renderStars = (score: number) => {
     return (
@@ -155,7 +155,7 @@ interface JobEditDialogProps {
 }
 
 function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
-  const { updateJobPosting } = useJobStore();
+  const { updateJobPosting } = useData();
   const [formData, setFormData] = useState({
     companyName: job.companyName,
     title: job.title,

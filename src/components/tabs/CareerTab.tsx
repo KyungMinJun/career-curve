@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -45,7 +46,11 @@ import { exportResumeToDocx } from '@/lib/resumeExporter';
 import { exportTailoredResumeToDocx, formatResumeForPreview, ResumeFormat } from '@/lib/tailoredResumeExporter';
 
 export function CareerTab() {
-  const { experiences, resumes, tailoredResumes, userName, userNameKo, userNameEn, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume, updateTailoredResume, removeTailoredResume } = useJobStore();
+  const { experiences, resumes, tailoredResumes, addExperience, updateExperience, removeExperience, addResume, updateResume, removeResume, updateTailoredResume, removeTailoredResume } = useData();
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.name_ko || user?.user_metadata?.name_en || user?.email || '사용자';
+  const userNameKo = user?.user_metadata?.name_ko || '';
+  const userNameEn = user?.user_metadata?.name_en || '';
   const [resumesOpen, setResumesOpen] = useState(true);
   const [workOpen, setWorkOpen] = useState(true);
   const [projectOpen, setProjectOpen] = useState(true);

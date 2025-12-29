@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { messages, addMessage, updateMessage, addJobPosting, jobPostings } = useJobStore();
+  const { messages, addMessage, updateMessage, addJobPosting, jobPostings } = useData();
 
   // Check if URL was already shared
   const findExistingJobByUrl = (url: string) => {

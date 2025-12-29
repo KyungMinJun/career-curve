@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, ChevronRight, FileText, Shield } from 'lucide-react';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
 import { AccountSheet } from '@/components/settings/AccountSheet';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export function SettingsTab() {
   const navigate = useNavigate();
-  const { jobPostings, currentGoal } = useJobStore();
+  const { jobPostings, currentGoals } = useData();
   const [accountOpen, setAccountOpen] = useState(false);
+  const currentGoal = currentGoals[0] ?? null;
 
   const interviewCount = jobPostings.filter(j => j.status === 'interview').length;
   const appliedCount = jobPostings.filter(j => j.status !== 'reviewing').length;

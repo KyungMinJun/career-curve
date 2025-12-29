@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,7 @@ interface JobDetailDialogProps {
 }
 
 export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }: JobDetailDialogProps) {
-  const { updateJobPosting, currentGoals, experiences, jobPostings } = useJobStore();
+  const { updateJobPosting, currentGoals, experiences, jobPostings } = useData();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isResumeBuilderOpen, setIsResumeBuilderOpen] = useState(false);

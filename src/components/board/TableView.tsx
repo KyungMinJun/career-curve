@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useJobStore } from '@/stores/jobStore';
+import { useData } from '@/contexts/DataContext';
 import { JobDetailDialog } from './JobDetailDialog';
 import {
   Select,
@@ -49,7 +49,7 @@ const DEFAULT_COLUMNS = [
 ];
 
 export function TableView({ jobs }: TableViewProps) {
-  const { updateJobPosting } = useJobStore();
+  const { updateJobPosting, jobPostings } = useData();
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [sortKey, setSortKey] = useState<SortKey>('priority');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -57,7 +57,7 @@ export function TableView({ jobs }: TableViewProps) {
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  const selectedJob = useJobStore((s) => (selectedJobId ? s.jobPostings.find((j) => j.id === selectedJobId) ?? null : null));
+  const selectedJob = selectedJobId ? jobPostings.find((j) => j.id === selectedJobId) ?? null : null;
 
   const filteredJobs = jobs
     .filter((job) => statusFilter === 'all' || job.status === statusFilter)
