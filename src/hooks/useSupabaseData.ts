@@ -234,15 +234,17 @@ export function useSupabaseData() {
   }, [fetchAllData]);
 
   // Job posting operations
-  const addJobPosting = async (posting: JobPosting) => {
+  const addJobPosting = async (posting: Omit<JobPosting, 'id'> & { id?: string }): Promise<string | undefined> => {
     if (!user) return;
     
-    const dbData = jobPostingToDb(posting, user.id);
-    dbData.id = posting.id;
+    const dbData = jobPostingToDb(posting as Partial<JobPosting>, user.id);
+    // Don't set id - let DB generate UUID
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('job_postings')
-      .insert(dbData as any);
+      .insert(dbData as any)
+      .select()
+      .single();
     
     if (error) {
       console.error('Error adding job posting:', error);
@@ -250,7 +252,9 @@ export function useSupabaseData() {
       return;
     }
     
-    setJobPostings(prev => [posting, ...prev]);
+    const newPosting = dbToJobPosting(data);
+    setJobPostings(prev => [newPosting, ...prev]);
+    return newPosting.id;
   };
 
   const updateJobPosting = async (id: string, updates: Partial<JobPosting>) => {
@@ -293,26 +297,36 @@ export function useSupabaseData() {
   };
 
   // Chat message operations
-  const addMessage = async (message: ChatMessage) => {
+  const addMessage = async (message: Omit<ChatMessage, 'id'> & { id?: string }): Promise<string | undefined> => {
     if (!user) return;
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('chat_messages')
       .insert({
-        id: message.id,
         user_id: user.id,
         type: message.type,
         content: message.content,
         job_posting_id: message.jobPostingId ?? null,
         is_processing: message.isProcessing ?? false,
-      });
+      })
+      .select()
+      .single();
     
     if (error) {
       console.error('Error adding message:', error);
       return;
     }
     
-    setMessages(prev => [...prev, message]);
+    const newMessage: ChatMessage = {
+      id: data.id,
+      type: data.type as 'user' | 'assistant' | 'system',
+      content: data.content,
+      jobPostingId: data.job_posting_id ?? undefined,
+      isProcessing: data.is_processing ?? false,
+      createdAt: new Date(data.created_at),
+    };
+    setMessages(prev => [...prev, newMessage]);
+    return data.id;
   };
 
   const updateMessage = async (id: string, updates: Partial<ChatMessage>) => {

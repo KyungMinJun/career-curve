@@ -14,12 +14,12 @@ interface DataContextType {
   isLoading: boolean;
   // Job postings
   jobPostings: JobPosting[];
-  addJobPosting: (posting: JobPosting) => Promise<void>;
+  addJobPosting: (posting: Omit<JobPosting, 'id'> & { id?: string }) => Promise<string | undefined>;
   updateJobPosting: (id: string, updates: Partial<JobPosting>) => Promise<void>;
   removeJobPosting: (id: string) => Promise<void>;
   // Messages
   messages: ChatMessage[];
-  addMessage: (message: ChatMessage) => Promise<void>;
+  addMessage: (message: Omit<ChatMessage, 'id'> & { id?: string }) => Promise<string | undefined>;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => Promise<void>;
   // Experiences
   experiences: Experience[];

@@ -79,38 +79,36 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
 
   const processJobUrl = async (url: string) => {
     // Add processing message
-    const processingId = (Date.now() + 1).toString();
-    addMessage({
-      id: processingId,
+    const processingMsgId = await addMessage({
       type: 'assistant',
       content: '공고를 정리하고 있어요…',
       isProcessing: true,
       createdAt: new Date(),
     });
 
+    if (!processingMsgId) {
+      toast.error('메시지 추가 중 오류가 발생했습니다');
+      return;
+    }
+
     try {
       // Call the edge function to analyze the job posting
       const jobData = await analyzeJobUrl(url);
       
-      // Priority is not assigned initially - only set after AI fit evaluation or company evaluation
-      // Priority 0 means "not yet evaluated"
-      
       // Create job posting from analyzed data
-      const newJobId = (Date.now() + 2).toString();
-      addJobPosting({
-        id: newJobId,
+      const newJobId = await addJobPosting({
         companyName: jobData.companyName || '회사명 확인 필요',
         title: jobData.title || '채용 공고',
         status: 'reviewing',
-        priority: 0, // Not assigned until AI evaluation
+        priority: 0,
         position: jobData.position || '미정',
         minExperience: jobData.minExperience,
         workType: jobData.workType,
         location: jobData.location,
         visaSponsorship: jobData.visaSponsorship,
         summary: jobData.summary || '공고 내용을 확인해주세요.',
-        companyScore: undefined, // Not evaluated yet
-        fitScore: undefined, // Not evaluated yet
+        companyScore: undefined,
+        fitScore: undefined,
         keyCompetencies: jobData.keyCompetencies || [],
         sourceUrl: url,
         createdAt: new Date(),
@@ -118,7 +116,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       });
 
       // Update processing message
-      updateMessage(processingId, {
+      updateMessage(processingMsgId, {
         content: `✅ 보드에 추가됨\n\n${jobData.companyName} - ${jobData.title}`,
         isProcessing: false,
         jobPostingId: newJobId,
@@ -129,12 +127,11 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     } catch (error: any) {
       console.error('Error analyzing job:', error);
       
-      // Check if this is a "no content" error - ask user if they still want to add
+      // Check if this is a "no content" error
       if (error?.message?.includes('추출할 수 없습니다') || error?.message?.includes('noContent')) {
         setPendingUrl(url);
         setNoContentDialogOpen(true);
-        // Remove processing message
-        updateMessage(processingId, {
+        updateMessage(processingMsgId, {
           content: '공고 내용을 가져올 수 없습니다.',
           isProcessing: false,
         });
@@ -142,7 +139,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       }
       
       // Update to error message
-      updateMessage(processingId, {
+      updateMessage(processingMsgId, {
         content: '❌ 공고 분석에 실패했습니다. 링크를 확인하거나 공고 내용을 직접 붙여넣어 주세요.',
         isProcessing: false,
       });
@@ -155,13 +152,11 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    const userMessage = {
-      id: Date.now().toString(),
+    await addMessage({
       type: 'user' as const,
       content: inputValue,
       createdAt: new Date(),
-    };
-    addMessage(userMessage);
+    });
 
     const isLink = isUrl(inputValue.trim());
     const urlToAnalyze = inputValue.trim();
@@ -178,7 +173,6 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
 
       // Check if it looks like a job URL
       if (!isLikelyJobUrl(urlToAnalyze)) {
-        // Show confirmation dialog
         setPendingUrl(urlToAnalyze);
         setConfirmDialogOpen(true);
         return;
@@ -187,9 +181,8 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       await processJobUrl(urlToAnalyze);
     } else {
       // Regular text message
-      setTimeout(() => {
-        addMessage({
-          id: (Date.now() + 1).toString(),
+      setTimeout(async () => {
+        await addMessage({
           type: 'assistant',
           content: '공고 링크를 붙여넣으시면 자동으로 분석해서 보드에 정리해드릴게요.',
           createdAt: new Date(),
@@ -206,10 +199,9 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     }
   };
 
-  const handleCancelJobUrl = () => {
+  const handleCancelJobUrl = async () => {
     setConfirmDialogOpen(false);
-    addMessage({
-      id: Date.now().toString(),
+    await addMessage({
       type: 'assistant',
       content: '취소되었습니다. 채용 공고 링크를 붙여넣어 주세요.',
       createdAt: new Date(),
@@ -225,10 +217,9 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     }
   };
 
-  const handleDuplicateCancel = () => {
+  const handleDuplicateCancel = async () => {
     setDuplicateDialogOpen(false);
-    addMessage({
-      id: Date.now().toString(),
+    await addMessage({
       type: 'assistant',
       content: '추가가 취소되었습니다.',
       createdAt: new Date(),
@@ -236,13 +227,11 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     setPendingUrl(null);
   };
 
-  const handleNoContentConfirm = () => {
+  const handleNoContentConfirm = async () => {
     setNoContentDialogOpen(false);
     if (pendingUrl) {
       // Add a minimal job posting with just the URL
-      const newJobId = (Date.now() + 2).toString();
-      addJobPosting({
-        id: newJobId,
+      const newJobId = await addJobPosting({
         companyName: '수동 입력 필요',
         title: '공고 내용 확인 필요',
         status: 'reviewing',
@@ -255,8 +244,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
         updatedAt: new Date(),
       });
       
-      addMessage({
-        id: Date.now().toString(),
+      await addMessage({
         type: 'assistant',
         content: '공고가 보드에 추가되었습니다. 공고 정보를 직접 입력해주세요.',
         jobPostingId: newJobId,
@@ -268,10 +256,9 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     }
   };
 
-  const handleNoContentCancel = () => {
+  const handleNoContentCancel = async () => {
     setNoContentDialogOpen(false);
-    addMessage({
-      id: Date.now().toString(),
+    await addMessage({
       type: 'assistant',
       content: '추가가 취소되었습니다.',
       createdAt: new Date(),
