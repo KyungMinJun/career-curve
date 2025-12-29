@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, ChevronRight, FileText, Shield } from 'lucide-react';
+import { User, ChevronRight, FileText, Shield, CreditCard, Sparkles } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { AccountSheet } from '@/components/settings/AccountSheet';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 export function SettingsTab() {
   const navigate = useNavigate();
-  const { jobPostings, currentGoals } = useData();
+  const { jobPostings, currentGoals, subscription } = useData();
   const [accountOpen, setAccountOpen] = useState(false);
   const currentGoal = currentGoals[0] ?? null;
 
@@ -17,6 +19,9 @@ export function SettingsTab() {
   const daysSinceGoal = start 
     ? Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
+
+  const totalCredits = subscription ? subscription.aiCreditsRemaining + subscription.aiCreditsUsed : 0;
+  const creditPercentage = totalCredits > 0 ? (subscription?.aiCreditsRemaining || 0) / totalCredits * 100 : 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -46,6 +51,39 @@ export function SettingsTab() {
             </div>
           </div>
         </div>
+
+        {/* Subscription Card */}
+        {subscription && (
+          <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                <span className="font-medium">{subscription.planDisplayName}</span>
+              </div>
+              <Badge variant={subscription.planName === 'free' ? 'secondary' : 'default'}>
+                {subscription.planName === 'free' ? '무료' : '유료'}
+              </Badge>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Sparkles className="w-4 h-4" />
+                  AI 크레딧
+                </span>
+                <span className="font-medium">
+                  {subscription.aiCreditsRemaining} / {totalCredits}
+                </span>
+              </div>
+              <Progress value={creditPercentage} className="h-2" />
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>공고 제한</span>
+              <span>{jobPostings.length} / {subscription.jobLimit >= 999999 ? '무제한' : subscription.jobLimit}</span>
+            </div>
+          </div>
+        )}
 
         {/* Menu Items */}
         <div className="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
