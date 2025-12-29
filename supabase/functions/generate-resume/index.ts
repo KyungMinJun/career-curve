@@ -251,14 +251,32 @@ ${exp.bullets.map((b) => `- ${b}`).join("\n")}
 - 경험 순서를 어떻게 최적화했는지
 2) ===RESUME===에는 이력서 본문만 작성.
 
-이력서 본문 작성 형식:
-- ${format === "consulting" ? "간결한 섹션(Heading) + Bullet 위주" : "섹션(경력/프로젝트) 구분 + 각 섹션 내 Bullet"}
-- 각 경험은 아래 형식을 따를 것:
-[경험 제목]
+## 표준 이력서 형식 (반드시 따를 것)
+아래 형식을 정확히 따라 작성하세요:
+
+---
+[지원자 이름]
+
+## 경력 요약
+(2-3문장으로 핵심 역량과 경력 요약)
+
+## 경력 사항
+각 경력은 아래 형식:
+**[직책/역할]**
 [회사명] | [기간]
-• bullet 1
-• bullet 2
-• bullet 3
+• 성과/업무 1
+• 성과/업무 2
+• 성과/업무 3
+
+## 프로젝트 (해당 시)
+**[프로젝트명]**
+[기간]
+• 주요 성과 1
+• 주요 성과 2
+
+## 기술 및 역량
+• 기술1, 기술2, 기술3
+---
 
 중요: 이력서 본문에 이모지를 절대 사용하지 마세요.`
         : `## Job Posting Information
@@ -296,14 +314,32 @@ Request:
 - How you optimized the experience order
 2) In ===RESUME===, write ONLY the resume body.
 
-Resume body format:
-- ${format === "consulting" ? "concise headings + bullets" : "sectioned narrative"}
-- For each experience use:
-[Experience Title]
+## STANDARD RESUME FORMAT (Must Follow)
+Use this exact structure:
+
+---
+[Candidate Name]
+
+## Professional Summary
+(2-3 sentences summarizing core competencies and experience)
+
+## Work Experience
+For each position use:
+**[Job Title]**
 [Company Name] | [Period]
-• bullet 1
-• bullet 2
-• bullet 3
+• Achievement/responsibility 1
+• Achievement/responsibility 2
+• Achievement/responsibility 3
+
+## Projects (if applicable)
+**[Project Name]**
+[Period]
+• Key achievement 1
+• Key achievement 2
+
+## Skills & Competencies
+• Skill1, Skill2, Skill3
+---
 
 IMPORTANT: Do NOT use emojis in the resume body.`;
 

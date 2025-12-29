@@ -55,8 +55,12 @@ For each competency, provide:
 3. Specific evidence from their experience, or note the lack thereof
 
 Also, evaluate minimum requirements check (최소 조건 충족 여부):
-- Analyze if the candidate meets the minimum experience requirement based on their work history periods
-- Consider total years of relevant experience from their employment history
+- Calculate total relevant work experience in YEARS from their employment history
+- Add up all period durations and provide a simple result
+- Your response for minimum requirements must be CONCISE:
+  * Just state: "총 경력 X년 Y개월 → [충족/미충족/판단 불가]"
+  * Only add clarification if specific periods are unclear (e.g., "2023년 1월~현재" 기간 계산 시 현재 시점 가정)
+  * Do NOT write long explanations about each job's duration
 - Be strict: only count directly relevant work experience, not projects or unrelated jobs
 
 Always respond in Korean.`;

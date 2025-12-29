@@ -289,17 +289,16 @@ Always respond in Korean for text fields.`;
     }
 
     if (!jobData) {
-      // Fallback: try to extract from content
-      console.log('No tool call found, using defaults');
-      jobData = {
-        companyName: pageTitle?.split(/[|-]/).pop()?.trim() || '회사명 확인 필요',
-        title: pageTitle?.split(/[|-]/)[0]?.trim() || '채용 공고',
-        position: '미정',
-        summary: '공고 내용을 확인해주세요.',
-        keyCompetencies: [],
-        companyScore: 3,
-        fitScore: 3
-      };
+      // No valid data extracted - return error instead of mock data
+      console.log('No valid job data extracted from AI response');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: '공고 내용을 추출할 수 없습니다. 페이지가 마감되었거나 접근할 수 없는 상태일 수 있습니다.',
+          noContent: true
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Extracted job data:', jobData);

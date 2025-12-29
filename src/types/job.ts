@@ -165,8 +165,9 @@ export const STATUS_COLORS: Record<JobStatus, string> = {
   'closed': 'bg-muted text-muted-foreground',
 };
 
-// Priority labels
+// Priority labels (0 = not evaluated yet)
 export const PRIORITY_LABELS: Record<number, string> = {
+  0: '미평가',
   1: '최우선',
   2: '높음',
   3: '보통',

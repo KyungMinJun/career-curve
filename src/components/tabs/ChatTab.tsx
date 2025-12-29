@@ -32,6 +32,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const [inputValue, setInputValue] = useState('');
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [noContentDialogOpen, setNoContentDialogOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,9 +92,8 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       // Call the edge function to analyze the job posting
       const jobData = await analyzeJobUrl(url);
       
-      // Calculate priority based on company and fit scores (1 is best)
-      const avgScore = ((jobData.companyScore || 3) + (jobData.fitScore || 3)) / 2;
-      const priority = Math.max(1, Math.min(5, Math.round(6 - avgScore)));
+      // Priority is not assigned initially - only set after AI fit evaluation or company evaluation
+      // Priority 0 means "not yet evaluated"
       
       // Create job posting from analyzed data
       const newJobId = (Date.now() + 2).toString();
@@ -102,15 +102,15 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
         companyName: jobData.companyName || '회사명 확인 필요',
         title: jobData.title || '채용 공고',
         status: 'reviewing',
-        priority,
+        priority: 0, // Not assigned until AI evaluation
         position: jobData.position || '미정',
         minExperience: jobData.minExperience,
         workType: jobData.workType,
         location: jobData.location,
         visaSponsorship: jobData.visaSponsorship,
         summary: jobData.summary || '공고 내용을 확인해주세요.',
-        companyScore: jobData.companyScore || 3,
-        fitScore: jobData.fitScore || 3,
+        companyScore: undefined, // Not evaluated yet
+        fitScore: undefined, // Not evaluated yet
         keyCompetencies: jobData.keyCompetencies || [],
         sourceUrl: url,
         createdAt: new Date(),
@@ -126,8 +126,20 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
 
       toast.success('공고가 분석되어 보드에 추가되었습니다');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error analyzing job:', error);
+      
+      // Check if this is a "no content" error - ask user if they still want to add
+      if (error?.message?.includes('추출할 수 없습니다') || error?.message?.includes('noContent')) {
+        setPendingUrl(url);
+        setNoContentDialogOpen(true);
+        // Remove processing message
+        updateMessage(processingId, {
+          content: '공고 내용을 가져올 수 없습니다.',
+          isProcessing: false,
+        });
+        return;
+      }
       
       // Update to error message
       updateMessage(processingId, {
@@ -215,6 +227,49 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
 
   const handleDuplicateCancel = () => {
     setDuplicateDialogOpen(false);
+    addMessage({
+      id: Date.now().toString(),
+      type: 'assistant',
+      content: '추가가 취소되었습니다.',
+      createdAt: new Date(),
+    });
+    setPendingUrl(null);
+  };
+
+  const handleNoContentConfirm = () => {
+    setNoContentDialogOpen(false);
+    if (pendingUrl) {
+      // Add a minimal job posting with just the URL
+      const newJobId = (Date.now() + 2).toString();
+      addJobPosting({
+        id: newJobId,
+        companyName: '수동 입력 필요',
+        title: '공고 내용 확인 필요',
+        status: 'reviewing',
+        priority: 0,
+        position: '미정',
+        summary: '공고 내용을 직접 확인하고 입력해주세요.',
+        keyCompetencies: [],
+        sourceUrl: pendingUrl,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      
+      addMessage({
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: '공고가 보드에 추가되었습니다. 공고 정보를 직접 입력해주세요.',
+        jobPostingId: newJobId,
+        createdAt: new Date(),
+      });
+      
+      toast.success('공고가 추가되었습니다. 정보를 직접 입력해주세요.');
+      setPendingUrl(null);
+    }
+  };
+
+  const handleNoContentCancel = () => {
+    setNoContentDialogOpen(false);
     addMessage({
       id: Date.now().toString(),
       type: 'assistant',
@@ -336,6 +391,25 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDuplicateCancel}>취소</AlertDialogCancel>
             <AlertDialogAction onClick={handleDuplicateConfirm}>추가</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* No Content Confirmation Dialog */}
+      <AlertDialog open={noContentDialogOpen} onOpenChange={setNoContentDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              공고 내용을 가져올 수 없습니다
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              해당 페이지가 마감되었거나 접근할 수 없는 상태입니다. 그래도 공고를 추가하고 직접 정보를 입력하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleNoContentCancel}>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleNoContentConfirm}>직접 입력하기</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
