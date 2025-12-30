@@ -151,6 +151,7 @@ export type Database = {
           fit_score: number | null
           id: string
           key_competencies: Json | null
+          language: string | null
           location: string | null
           location_evidence: string | null
           min_experience: string | null
@@ -177,6 +178,7 @@ export type Database = {
           fit_score?: number | null
           id?: string
           key_competencies?: Json | null
+          language?: string | null
           location?: string | null
           location_evidence?: string | null
           min_experience?: string | null
@@ -203,6 +205,7 @@ export type Database = {
           fit_score?: number | null
           id?: string
           key_competencies?: Json | null
+          language?: string | null
           location?: string | null
           location_evidence?: string | null
           min_experience?: string | null

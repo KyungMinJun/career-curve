@@ -44,6 +44,19 @@ function detectLanguage(text: string): 'ko' | 'en' {
   return englishRatio > 0.7 ? 'en' : 'ko';
 }
 
+// Gets the language for resume generation - prioritizes stored language from job
+function getResumeLanguage(job: JobPosting, keyCompetencies: KeyCompetency[]): 'ko' | 'en' {
+  // If job has a stored language from analyze-job, use it
+  if (job.language) {
+    return job.language;
+  }
+  
+  // Fallback to detection from content
+  const competencyText = keyCompetencies.map(k => `${k.title} ${k.description}`).join(' ');
+  const textToAnalyze = `${job.title} ${job.summary || ''} ${competencyText}`;
+  return detectLanguage(textToAnalyze);
+}
+
 export function ResumeBuilderDialog({
   open,
   onOpenChange,
@@ -98,12 +111,10 @@ export function ResumeBuilderDialog({
     setSelectedExperiences([]);
   };
 
+  // Use job.language if available (from analyze-job), otherwise detect from content
   const language = useMemo(() => {
-    // Analyze job title, summary, and key competencies for language detection
-    const competencyText = keyCompetencies.map(k => `${k.title} ${k.description}`).join(' ');
-    const textToAnalyze = `${job.title} ${job.summary || ''} ${competencyText}`;
-    return detectLanguage(textToAnalyze);
-  }, [job.title, job.summary, keyCompetencies]);
+    return getResumeLanguage(job, keyCompetencies);
+  }, [job, keyCompetencies]);
 
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 

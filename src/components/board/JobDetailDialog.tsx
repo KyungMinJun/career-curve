@@ -344,7 +344,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
               {job.summary && (
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold text-foreground">AI 요약</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed bg-accent/50 rounded-lg p-3">{job.summary}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed bg-accent/50 rounded-lg p-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{job.summary}</p>
                 </div>
               )}
 
@@ -389,7 +389,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                   {fitAvg > 0 && (
                     <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
                       <h4 className="text-xs font-semibold text-primary mb-1">종합 피드백</h4>
-                      <p className="text-sm text-foreground leading-relaxed">
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                         {fitAvg >= 4 ? (
                           <>적합한 경험을 보유하고 있습니다. 핵심 역량과 잘 맞는 경험을 강조하여 지원하시면 좋겠습니다.</>
                         ) : fitAvg >= 3 ? (
@@ -416,8 +416,8 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                       <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
-                            <p className="text-sm font-medium">{comp.title}</p>
-                            <p className="text-xs text-muted-foreground">{comp.description}</p>
+                            <p className="text-sm font-medium break-words [overflow-wrap:anywhere]">{comp.title}</p>
+                            <p className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">{comp.description}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -437,7 +437,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
                           {comp.evaluation && editingEvaluation !== idx && (
                             <div className="bg-background/50 rounded p-2 mt-1">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-muted-foreground italic flex-1">{comp.evaluation}</p>
+                                <p className="text-xs text-muted-foreground italic flex-1 break-words [overflow-wrap:anywhere]">{comp.evaluation}</p>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -662,7 +662,7 @@ function InfoRowWithEvidence({ icon, label, value, evidence, field, editingField
       {evidence && (
         <div className="mt-2 flex items-start gap-2 text-xs text-muted-foreground bg-background/50 rounded p-2">
           <Quote className="w-3 h-3 shrink-0 mt-0.5" />
-          <span className="italic">{evidence}</span>
+          <span className="italic break-words [overflow-wrap:anywhere]">{evidence}</span>
         </div>
       )}
     </div>

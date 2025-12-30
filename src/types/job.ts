@@ -46,6 +46,7 @@ export interface JobPosting {
   status: JobStatus;
   priority: number; // 1-5 (1 is best)
   position: string;
+  language?: 'ko' | 'en'; // 공고 언어
   minExperience?: string;
   minExperienceEvidence?: string;
   workType?: string;
