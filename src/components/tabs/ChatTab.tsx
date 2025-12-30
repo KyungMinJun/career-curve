@@ -33,10 +33,13 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [noContentDialogOpen, setNoContentDialogOpen] = useState(false);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { messages, addMessage, updateMessage, addJobPosting, jobPostings } = useData();
+  const { messages, addMessage, updateMessage, addJobPosting, jobPostings, canAddJob, subscription } = useData();
+
+  const isAtJobLimit = !canAddJob(jobPostings.length);
 
   // Check if URL was already shared
   const findExistingJobByUrl = (url: string) => {
@@ -164,6 +167,13 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     setInputValue('');
 
     if (isLink) {
+      // Check job limit first
+      if (isAtJobLimit) {
+        setPendingUrl(urlToAnalyze);
+        setLimitDialogOpen(true);
+        return;
+      }
+
       // Check if this URL was already shared
       const existingJob = findExistingJobByUrl(urlToAnalyze);
       if (existingJob) {
@@ -398,6 +408,31 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleNoContentCancel}>취소</AlertDialogCancel>
             <AlertDialogAction onClick={handleNoContentConfirm}>직접 입력하기</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Job Limit Dialog */}
+      <AlertDialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              공고 추가 한도 초과
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {subscription?.planName === 'free' 
+                ? `무료 요금제는 공고 ${subscription.jobLimit}개까지 추가할 수 있습니다. 더 많은 공고를 관리하려면 유료 요금제로 업그레이드해주세요.`
+                : '공고 추가 한도에 도달했습니다. 요금제를 업그레이드해주세요.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setLimitDialogOpen(false);
+              setPendingUrl(null);
+            }}>
+              닫기
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -299,38 +299,46 @@ export function TableView({ jobs }: TableViewProps) {
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide">
-          <div 
-            className="grid gap-2 px-4 py-3 bg-secondary/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-max"
-            style={{ gridTemplateColumns: visibleColumns.map(() => 'minmax(80px, 1fr)').join(' ') }}
-          >
-            {visibleColumns.map((col) => (
-              <span key={col.key} className="truncate">{col.label}</span>
-            ))}
-          </div>
-
-          <div className="divide-y divide-border">
-            {filteredJobs.map((job) => (
-              <div
-                key={job.id}
-                className="grid gap-2 px-4 py-3 items-center hover:bg-secondary/30 cursor-pointer transition-colors min-w-max"
-                style={{ gridTemplateColumns: visibleColumns.map(() => 'minmax(80px, 1fr)').join(' ') }}
-                onClick={() => setSelectedJobId(job.id)}
-              >
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed min-w-[800px]">
+            <thead>
+              <tr className="bg-secondary/50 border-b border-border">
                 {visibleColumns.map((col) => (
-                  <div key={col.key} className="min-w-0">
-                    {renderCell(job, col.key)}
-                  </div>
+                  <th 
+                    key={col.key} 
+                    className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                    style={{ width: col.key === 'title' ? '25%' : col.key === 'companyName' ? '15%' : '12%' }}
+                  >
+                    {col.label}
+                  </th>
                 ))}
-              </div>
-            ))}
-
-            {filteredJobs.length === 0 && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                표시할 공고가 없습니다
-              </div>
-            )}
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredJobs.map((job) => (
+                <tr
+                  key={job.id}
+                  className="hover:bg-secondary/30 cursor-pointer transition-colors"
+                  onClick={() => setSelectedJobId(job.id)}
+                >
+                  {visibleColumns.map((col) => (
+                    <td key={col.key} className="px-4 py-3">
+                      <div className="min-w-0 overflow-hidden">
+                        {renderCell(job, col.key)}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {filteredJobs.length === 0 && (
+                <tr>
+                  <td colSpan={visibleColumns.length} className="text-center py-8 text-sm text-muted-foreground">
+                    표시할 공고가 없습니다
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

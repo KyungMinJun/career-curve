@@ -30,6 +30,15 @@ export function useSubscription() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
 
+  // SECURITY: Reset subscription data immediately when user changes or logs out
+  useEffect(() => {
+    if (!user) {
+      setSubscription(null);
+      setPlans([]);
+      setIsLoading(false);
+    }
+  }, [user]);
+
   const fetchSubscription = useCallback(async () => {
     if (!user) {
       setIsLoading(false);

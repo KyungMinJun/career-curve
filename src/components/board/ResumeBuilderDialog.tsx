@@ -74,7 +74,9 @@ export function ResumeBuilderDialog({
   const [isSaved, setIsSaved] = useState(false);
   const [lastSavedTailoredResumeId, setLastSavedTailoredResumeId] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-  const { addTailoredResume } = useData();
+  const { addTailoredResume, hasAiCredits, useAiCredit } = useData();
+
+  const hasCredits = hasAiCredits();
 
   const workExperiences = useMemo(() => experiences.filter(e => e.type === 'work'), [experiences]);
   const projectExperiences = useMemo(() => experiences.filter(e => e.type === 'project'), [experiences]);
@@ -124,6 +126,11 @@ export function ResumeBuilderDialog({
       return;
     }
 
+    if (!hasCredits) {
+      toast.error('AI 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
+      return;
+    }
+
     const controller = new AbortController();
     setAbortController(controller);
     setIsGenerating(true);
@@ -131,6 +138,14 @@ export function ResumeBuilderDialog({
     setAiFeedback(null);
 
     try {
+      // Use AI credit first
+      const creditUsed = await useAiCredit(1);
+      if (!creditUsed) {
+        toast.error('AI 크레딧 사용에 실패했습니다.');
+        setIsGenerating(false);
+        return;
+      }
+
       const selectedExps = experiences.filter(e => selectedExperiences.includes(e.id));
 
       const { data, error } = await supabase.functions.invoke('generate-resume', {
@@ -363,7 +378,12 @@ export function ResumeBuilderDialog({
         <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
           {step === 1 && !generatedContent && (
             <div className="flex flex-col gap-2">
-              {!isGenerating && (
+              {!hasCredits && (
+                <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
+                  AI 크레딧이 부족합니다. 유료 요금제로 업그레이드해주세요.
+                </div>
+              )}
+              {hasCredits && !isGenerating && (
                 <div className="bg-muted/50 text-muted-foreground text-xs p-2 rounded-lg text-center">
                   20초 정도 소요됩니다. 중간에 창을 닫거나 나가면 저장되지 않습니다.
                 </div>
@@ -386,7 +406,7 @@ export function ResumeBuilderDialog({
                 <Button
                   className="w-full"
                   onClick={handleGenerate}
-                  disabled={selectedExperiences.length === 0}
+                  disabled={selectedExperiences.length === 0 || !hasCredits}
                 >
                   맞춤 이력서 생성
                   <ArrowRight className="w-4 h-4 ml-2" />

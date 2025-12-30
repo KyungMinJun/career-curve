@@ -165,6 +165,19 @@ export function useSupabaseData() {
   const [tailoredResumes, setTailoredResumes] = useState<TailoredResume[]>([]);
   const [currentGoals, setCurrentGoals] = useState<CareerGoal[]>([]);
 
+  // SECURITY: Reset all data immediately when user changes or logs out
+  useEffect(() => {
+    if (!user) {
+      setJobPostings([]);
+      setMessages([]);
+      setExperiences([]);
+      setResumes([]);
+      setTailoredResumes([]);
+      setCurrentGoals([]);
+      setIsLoading(false);
+    }
+  }, [user]);
+
   // Fetch all data on mount
   const fetchAllData = useCallback(async () => {
     if (!user) {
