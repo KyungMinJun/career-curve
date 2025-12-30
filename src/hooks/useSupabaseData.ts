@@ -110,19 +110,23 @@ function calculateRelativePriorityFromScores({
 }): number {
   const comp = typeof companyScore === 'number' ? companyScore : 0;
   const fit = typeof fitScore === 'number' ? fitScore : 0;
+  
+  // 적합도 평가나 회사 평가가 없으면 우선순위 0 (미평가) 유지
+  // 둘 중 하나라도 있어야 우선순위 부여
+  if (comp === 0 && fit === 0) return 0;
+  
   const count = (comp > 0 ? 1 : 0) + (fit > 0 ? 1 : 0);
-  const thisScore = count > 0 ? (comp + fit) / count : 0;
-
-  // No scores yet → keep as "미평가"
-  if (thisScore === 0) return 0;
+  const thisScore = (comp + fit) / count;
 
   const allScores = allJobPostings
     .filter((j) => (jobId ? j.id !== jobId : true))
     .map((j) => {
       const c = j.companyScore || 0;
       const f = j.fitScore || 0;
+      // 둘 중 하나라도 있어야 점수 계산
+      if (c === 0 && f === 0) return 0;
       const n = (c > 0 ? 1 : 0) + (f > 0 ? 1 : 0);
-      return n > 0 ? (c + f) / n : 0;
+      return (c + f) / n;
     })
     .filter((s) => s > 0);
 

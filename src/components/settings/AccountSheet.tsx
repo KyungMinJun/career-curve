@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, KeyRound, UserCog, UserX, ChevronRight } from 'lucide-react';
+import { LogOut, KeyRound, UserCog, UserX, ChevronRight, Crown } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { ProfileEditSheet } from './ProfileEditSheet';
+import { PricingSheet } from './PricingSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,6 +33,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const { user, signOut } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
 
   const userEmail = useMemo(() => user?.email ?? null, [user]);
 
@@ -65,6 +67,12 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   };
 
   const menuItems = [
+    {
+      icon: Crown,
+      label: '요금제',
+      description: '플랜 확인 및 업그레이드',
+      onClick: () => setShowPricing(true),
+    },
     {
       icon: UserCog,
       label: '개인 정보 변경',
@@ -200,6 +208,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
       </AlertDialog>
 
       <ProfileEditSheet open={showProfileEdit} onOpenChange={setShowProfileEdit} />
+      <PricingSheet open={showPricing} onOpenChange={setShowPricing} />
     </>
   );
 }
