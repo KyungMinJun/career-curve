@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { ArrowLeft, Users, CreditCard, Shield } from 'lucide-react';
+import { ArrowLeft, Users, CreditCard, Shield, Search } from 'lucide-react';
 
 interface UserWithSubscription {
   id: string;
@@ -40,6 +41,7 @@ export default function Admin() {
   const [users, setUsers] = useState<UserWithSubscription[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!authLoading && !roleLoading) {
@@ -73,6 +75,15 @@ export default function Admin() {
         jobLimit: p.job_limit,
         aiCredits: p.ai_credits,
       })));
+
+      // Fetch user emails from edge function
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('admin-users');
+      
+      if (emailError) {
+        console.error('Error fetching user emails:', emailError);
+      }
+      
+      const userEmailMap: Record<string, string> = emailData?.userEmailMap || {};
 
       // Fetch users with subscriptions and roles
       const { data: profilesData, error: profilesError } = await supabase
@@ -111,7 +122,7 @@ export default function Admin() {
         usersWithDetails.push({
           id: profile.user_id,
           name: profile.name || '이름 없음',
-          email: profile.user_id, // Will be replaced with actual email lookup
+          email: userEmailMap[profile.user_id] || 'N/A',
           createdAt: new Date(profile.created_at),
           role: (roleData?.role as 'admin' | 'user') || 'user',
           planName: (subData?.plans as any)?.name || 'free',
@@ -255,7 +266,19 @@ export default function Admin() {
         {/* Users Table */}
         <Card>
           <CardHeader>
-            <CardTitle>사용자 관리</CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <CardTitle>사용자 관리</CardTitle>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="이름 또는 이메일 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -270,12 +293,21 @@ export default function Admin() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map(u => (
+                {users
+                  .filter(u => {
+                    if (!searchQuery.trim()) return true;
+                    const query = searchQuery.toLowerCase();
+                    return (
+                      u.name.toLowerCase().includes(query) ||
+                      u.email.toLowerCase().includes(query)
+                    );
+                  })
+                  .map(u => (
                   <TableRow key={u.id}>
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-medium text-foreground">{u.name}</span>
-                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">{u.id}</span>
+                        <span className="text-xs text-muted-foreground">{u.email}</span>
                       </div>
                     </TableCell>
                     <TableCell>{u.createdAt.toLocaleDateString('ko-KR')}</TableCell>
