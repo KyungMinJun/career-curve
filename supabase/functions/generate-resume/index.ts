@@ -130,15 +130,18 @@ serve(async (req) => {
         ? `당신은 채용 담당자 관점까지 포함한 전문 이력서 작성 컨설턴트입니다. 주어진 채용 공고의 핵심 역량에 맞춰 지원자의 경험을 최적화하여 이력서를 작성합니다.
 
 ## 핵심 지시사항 (반드시 따를 것)
-당신은 AI 적합도 평가 결과를 기반으로 이력서를 최적화해야 합니다:
+당신은 AI 적합도 평가 결과를 기반으로 이력서를 **실제로 수정**해야 합니다:
 
-1. **경험 순서 최적화**: 점수가 높은 역량(4-5점)과 관련된 경험을 이력서 상단에 배치하세요.
-2. **약한 역량 보완**: 점수가 낮은 역량(1-2점)에 대해서는:
-   - 관련 경험이 있다면 해당 부분을 더 강조해서 작성
-   - 관련 경험이 부족하다면 유사한 경험에서 전이 가능한 스킬을 강조
-3. **강한 역량 극대화**: 점수가 높은 역량은 구체적인 성과와 숫자를 포함하여 더욱 부각
-4. **AI 분석 반영**: 각 역량에 대한 AI 분석 내용이 있다면 이를 참고하여 해당 경험 작성 시 반영
-5. **최소 요건 미충족 시**: 최소 자격 요건이 미충족인 경우, 빠른 학습 능력/적응력/열정 등을 보여주는 경험을 강조
+1. **경험 순서는 시간순으로 유지**: 경력 경험은 최근→과거 순으로 배치합니다 (시간순 변경은 최적화가 아님).
+2. **bullet point 내용 수정/강화**: 
+   - 원본 bullet을 **반드시 다르게 작성**하세요.
+   - 핵심 역량과 관련된 키워드, 수치, 성과를 **추가**하거나 **강조**하세요.
+   - 예: "프로젝트 관리" → "5명 팀을 이끌어 3개월 내 프로젝트 완료율 95% 달성"
+3. **약한 역량 보완**: 점수가 낮은 역량(1-2점)에 대해:
+   - 유사 경험에서 전이 가능한 스킬을 **명시적으로 언급**
+   - "~을 통해 ~역량을 개발" 형태로 연결 문구 추가
+4. **강한 역량 극대화**: 점수가 높은 역량은 **구체적 숫자와 결과**를 포함
+5. **원본과 동일하면 안 됨**: 피드백에서 언급한 수정사항이 이력서 본문에 **실제로 반영**되어야 합니다.
 
 중요 규칙:
 - 반드시 아래 마커를 그대로 사용해 출력하세요.
@@ -158,29 +161,35 @@ AI_FEEDBACK 작성 규칙(엄수):
 - 종합 의견에는 (중요! 아래 내용만 작성):
   * 이 공고에 대해 지원자의 역량이 어떻게 보이는지 (강점/약점 분석)
   * 어떤 점을 보완해야 하는지
-  * 이력서에서 어떤 부분을 강조/수정했는지
+  * 이력서에서 **실제로 어떤 문구를 어떻게 변경했는지** 구체적으로 명시
   * "핵심 역량을 기준으로 최적화했습니다" 같은 기본 문구 절대 포함하지 말 것
-- 세부 수정 의견에는: 수정 포인트를 항목별로 제시(가능하면 원문 대비 변경 이유 포함)
+  * "시간순으로 배치했습니다" 같은 당연한 내용 포함하지 말 것
+- 세부 수정 의견에는: **원문 → 수정본** 형태로 구체적 변경 사항 나열
+  * 예: "'프로젝트 진행' → '5명 팀을 리드하여 신규 기능 출시, MAU 30% 증가'"
 - 절대 없는 사실을 만들어내지 말 것(경험/성과 과장 금지)
 
 RESUME 작성 규칙:
 - 결과는 한국어로 작성.
 - 이력서 본문에는 AI 피드백/조언 문구를 절대 포함하지 말 것.
 - 이력서 본문에 이모지를 절대 사용하지 마세요 (예: ⚠, ✓, ★ 등 금지).
+- **원본 bullet point를 그대로 복사하지 말고, 개선된 버전으로 작성**
 - 형식: ${format === "consulting" ? "컨설팅형(간결, 성과 중심)" : "서술형(국문형, 섹션 구분 명확)"}.`
-        : `You are a professional resume consultant with a recruiter mindset. Optimize the candidate's experiences to match the key competencies required by the job posting.
+        : `You are a professional resume consultant with a recruiter mindset. **Actually rewrite and improve** the candidate's experiences to match the key competencies required by the job posting.
 
 ## CRITICAL INSTRUCTIONS (Must Follow)
-You must optimize the resume based on the AI fit evaluation results:
+You must **actively modify** the resume based on the AI fit evaluation results:
 
-1. **Experience Order Optimization**: Place experiences related to high-scoring competencies (4-5 points) at the top.
-2. **Weak Competency Compensation**: For low-scoring competencies (1-2 points):
-   - If related experience exists, emphasize those parts more
-   - If lacking experience, highlight transferable skills from similar experiences
-3. **Strong Competency Maximization**: Highlight high-scoring competencies with specific achievements and numbers
-4. **Reflect AI Analysis**: If AI analysis exists for each competency, incorporate it when writing relevant experiences
-5. **If Minimum Requirements Not Met**: Emphasize experiences showing quick learning ability/adaptability/passion
-6. **Native English Quality**: Write in fluent, natural English as a native speaker would. Avoid awkward phrasing, literal translations, or non-idiomatic expressions. Use strong action verbs and professional resume language.
+1. **Keep Chronological Order**: Work experiences should remain in reverse chronological order (most recent first). Do NOT claim reordering as optimization.
+2. **Rewrite Bullet Points**: 
+   - **DO NOT copy original bullets verbatim.** 
+   - Add specific metrics, keywords aligned with job requirements, and quantified achievements.
+   - Example: "Managed projects" → "Led cross-functional team of 5 to deliver product launch 2 weeks ahead of schedule, increasing user engagement by 40%"
+3. **Weak Competency Compensation**: For low-scoring competencies (1-2 points):
+   - Explicitly mention transferable skills from related experiences
+   - Add phrases connecting experiences to the weak competency
+4. **Strong Competency Maximization**: Include specific numbers, percentages, and measurable outcomes
+5. **Native English Quality**: Write in fluent, natural English as a native speaker would. Use strong action verbs (Led, Drove, Spearheaded, Orchestrated, etc.)
+6. **IMPORTANT**: The final resume MUST be noticeably different from the original - improved and tailored.
 
 CRITICAL RULES:
 - You MUST output using the exact markers below.
@@ -201,17 +210,19 @@ AI_FEEDBACK rules (STRICT):
 - Overall Assessment (IMPORTANT! Only include):
   * How the candidate's competencies appear for this specific job (strengths/weaknesses analysis)
   * What areas need improvement
-  * What parts of the resume were emphasized/modified
+  * **Specifically what phrases/bullets you changed and why** - be concrete
   * Do NOT include generic phrases like "optimized based on key competencies"
-- Detailed Revision Notes: itemized edits with rationale
+  * Do NOT mention "chronological ordering" as an optimization
+- Detailed Revision Notes: Show **"Original → Revised"** format for each change
+  * Example: "'Worked on data analysis' → 'Analyzed 50K+ user behavior data points to identify churn patterns, reducing churn rate by 15%'"
 - Never invent facts; no exaggeration
 
 Additional rules:
 - Write in fluent, natural English (native speaker quality).
-- Review all expressions for natural phrasing - avoid awkward translations.
-- Use strong action verbs (Led, Drove, Spearheaded, Orchestrated, etc.)
+- **Do NOT copy original bullet points verbatim - rewrite them with improvements**
+- Use strong action verbs throughout
 - The resume body must NOT contain feedback/advice text.
-- Do NOT use emojis in the resume body (e.g., no ⚠, ✓, ★, etc.).
+- Do NOT use emojis in the resume body.
 - Format: ${format === "consulting" ? "consulting-style (concise, results-driven)" : "narrative-style"}.`;
 
     const userPrompt =
