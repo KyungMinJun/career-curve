@@ -21,6 +21,7 @@ interface DbJobPosting {
   status: string;
   priority: number;
   position: string;
+  language: string | null;
   min_experience: string | null;
   min_experience_evidence: string | null;
   work_type: string | null;
@@ -49,6 +50,7 @@ function dbToJobPosting(db: DbJobPosting): JobPosting {
     status: db.status as JobStatus,
     priority: db.priority,
     position: db.position,
+    language: (db.language as 'ko' | 'en') ?? undefined,
     minExperience: db.min_experience ?? undefined,
     minExperienceEvidence: db.min_experience_evidence ?? undefined,
     workType: db.work_type ?? undefined,
@@ -78,6 +80,7 @@ function jobPostingToDb(job: Partial<JobPosting>, userId: string): Record<string
   if (job.status !== undefined) result.status = job.status;
   if (job.priority !== undefined) result.priority = job.priority;
   if (job.position !== undefined) result.position = job.position;
+  if (job.language !== undefined) result.language = job.language;
   if (job.minExperience !== undefined) result.min_experience = job.minExperience;
   if (job.minExperienceEvidence !== undefined) result.min_experience_evidence = job.minExperienceEvidence;
   if (job.workType !== undefined) result.work_type = job.workType;

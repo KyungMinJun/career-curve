@@ -95,13 +95,14 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       // Call the edge function to analyze the job posting
       const jobData = await analyzeJobUrl(url);
       
-      // Create job posting from analyzed data
+      // Create job posting from analyzed data, including detected language
       const newJobId = await addJobPosting({
         companyName: jobData.companyName || '회사명 확인 필요',
         title: jobData.title || '채용 공고',
         status: 'reviewing',
         priority: 0,
         position: jobData.position || '미정',
+        language: jobData.language || 'ko', // Store detected language
         minExperience: jobData.minExperience,
         workType: jobData.workType,
         location: jobData.location,
