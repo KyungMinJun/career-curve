@@ -311,8 +311,8 @@ export function ResumeBuilderDialog({
         </p>
       </div>
 
-      <div className="bg-secondary/30 rounded-lg p-4 overflow-x-auto">
-        <pre className="text-sm whitespace-pre font-sans text-foreground">
+      <div className="bg-secondary/30 rounded-lg p-4 overflow-x-auto max-h-[45vh] overflow-y-auto">
+        <pre className="text-sm whitespace-pre-wrap break-words font-sans text-foreground [overflow-wrap:anywhere]">
           {generatedContent}
         </pre>
       </div>
@@ -352,9 +352,14 @@ export function ResumeBuilderDialog({
         <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
           {step === 1 && !generatedContent && (
             <div className="flex flex-col gap-2">
+              {!isGenerating && (
+                <div className="bg-muted/50 text-muted-foreground text-xs p-2 rounded-lg text-center">
+                  약 15초 소요됩니다. 창을 닫으면 이력서가 저장되지 않습니다.
+                </div>
+              )}
               {isGenerating && (
                 <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center">
-                  약 15초 소요됩니다.
+                  생성 중... 창을 닫으면 이력서가 저장되지 않습니다.
                 </div>
               )}
               {isGenerating ? (

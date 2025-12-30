@@ -1050,14 +1050,14 @@ function TailoredResumePreviewDialog({
           
            <div className="flex-1 overflow-hidden flex flex-col gap-3">
              {/* Resume Preview - styled like actual resume */}
-             <div className="bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 flex-1 overflow-y-auto min-h-[300px] shadow-inner">
-               <h1 className="text-2xl font-bold text-center text-foreground mb-6 border-b-2 border-foreground pb-2">
-                 {chosenName}
-               </h1>
-               <pre className="text-sm whitespace-pre-wrap font-sans text-foreground leading-relaxed" style={{ fontFamily: resume.language === 'en' ? 'Georgia, serif' : 'Pretendard, sans-serif' }}>
-                 {bodyContent}
-               </pre>
-             </div>
+              <div className="bg-white dark:bg-zinc-900 border-2 border-border rounded-lg p-6 flex-1 overflow-y-auto min-h-[300px] shadow-inner">
+                <h1 className="text-2xl font-bold text-center text-foreground mb-6 border-b-2 border-foreground pb-2">
+                  {chosenName}
+                </h1>
+                <pre className="text-sm whitespace-pre-wrap break-words font-sans text-foreground leading-relaxed [overflow-wrap:anywhere]" style={{ fontFamily: resume.language === 'en' ? 'Georgia, serif' : 'Pretendard, sans-serif' }}>
+                  {bodyContent}
+                </pre>
+              </div>
 
             {/* Action buttons */}
             <div className="flex gap-2">

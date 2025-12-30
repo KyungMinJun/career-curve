@@ -13,6 +13,7 @@ import { ArrowLeft, Users, CreditCard, Shield } from 'lucide-react';
 
 interface UserWithSubscription {
   id: string;
+  name: string;
   email: string;
   createdAt: Date;
   role: 'admin' | 'user';
@@ -20,6 +21,7 @@ interface UserWithSubscription {
   planDisplayName: string;
   aiCreditsRemaining: number;
   aiCreditsUsed: number;
+  totalCreditsGranted: number;
 }
 
 interface Plan {
@@ -82,13 +84,12 @@ export default function Admin() {
       const usersWithDetails: UserWithSubscription[] = [];
 
       for (const profile of profilesData || []) {
-        // Get user email from auth (we can't directly access auth.users, so we use the profile)
-        // Get subscription
+        // Get subscription with plan details
         const { data: subData } = await supabase
           .from('user_subscriptions')
           .select(`
             *,
-            plans (name, display_name)
+            plans (name, display_name, ai_credits)
           `)
           .eq('user_id', profile.user_id)
           .maybeSingle();
@@ -100,15 +101,24 @@ export default function Admin() {
           .eq('user_id', profile.user_id)
           .maybeSingle();
 
+        // Calculate total credits granted (plan credits + remaining - used + used = plan credits + any bonus)
+        const planCredits = (subData?.plans as any)?.ai_credits || 0;
+        const remaining = subData?.ai_credits_remaining || 0;
+        const used = subData?.ai_credits_used || 0;
+        // Total granted = used + remaining (this represents what they've been given in total)
+        const totalGranted = used + remaining;
+
         usersWithDetails.push({
           id: profile.user_id,
-          email: profile.name, // Using name as email placeholder
+          name: profile.name || '이름 없음',
+          email: profile.user_id, // Will be replaced with actual email lookup
           createdAt: new Date(profile.created_at),
           role: (roleData?.role as 'admin' | 'user') || 'user',
           planName: (subData?.plans as any)?.name || 'free',
           planDisplayName: (subData?.plans as any)?.display_name || 'Free',
-          aiCreditsRemaining: subData?.ai_credits_remaining || 0,
-          aiCreditsUsed: subData?.ai_credits_used || 0,
+          aiCreditsRemaining: remaining,
+          aiCreditsUsed: used,
+          totalCreditsGranted: totalGranted,
         });
       }
 
@@ -255,14 +265,19 @@ export default function Admin() {
                   <TableHead>가입일</TableHead>
                   <TableHead>권한</TableHead>
                   <TableHead>플랜</TableHead>
-                  <TableHead>AI 크레딧</TableHead>
+                  <TableHead>크레딧 (사용/부여)</TableHead>
                   <TableHead>작업</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map(u => (
                   <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.email}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{u.name}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">{u.id}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>{u.createdAt.toLocaleDateString('ko-KR')}</TableCell>
                     <TableCell>
                       <Select
@@ -297,9 +312,14 @@ export default function Admin() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {u.aiCreditsRemaining} / {u.aiCreditsRemaining + u.aiCreditsUsed}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline">
+                          {u.aiCreditsUsed} / {u.totalCreditsGranted}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          잔여: {u.aiCreditsRemaining}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Button

@@ -161,13 +161,14 @@ AI_FEEDBACK 작성 규칙(엄수):
   2) ## 역량 분석
   3) ## 세부 수정 내용
 - "## 종합 의견"은 **절대 중복 출력하지 마세요**. 한 번만 작성합니다.
+- **중요**: AI 적합도 평가에서 낮은 점수(1-2점)를 받은 역량이 있다면, 종합 의견에서 **객관적으로 약점을 언급**해야 합니다. 무조건 긍정적인 피드백은 금지입니다.
 - 종합 의견에는:
-  * 이 공고에 대한 지원자 적합도 (전반적인 강점/약점)
-  * 보완이 필요한 부분
-  * 이력서에서 강조할 핵심 포인트
+  * 이 공고에 대한 지원자 적합도 (전반적인 강점/약점 - 적합도 평가 점수 기반)
+  * 부족한 역량과 그것이 채용에 미칠 수 있는 영향
+  * 강조할 핵심 포인트와 약점을 보완하기 위한 전략
 - 역량 분석에는:
-  * 각 핵심 역량별 지원자 강점/약점 분석
-  * 부족한 역량을 어떻게 보완했는지
+  * 각 핵심 역량별 지원자 강점/약점 분석 (AI 평가 점수 반영)
+  * 부족한 역량을 어떻게 보완했는지 (또는 보완이 어려운 경우 그 한계)
 - 세부 수정 내용에는:
   * **원문 → 수정본** 형태로 구체적 변경 사항 나열
   * 예: "'프로젝트 진행' → '5명 팀을 리드하여 신규 기능 출시, MAU 30% 증가'"
@@ -215,13 +216,14 @@ AI_FEEDBACK rules (STRICT):
   2) ## Competency Analysis
   3) ## Detailed Revisions
 - "## Overall Assessment" must appear **ONLY ONCE**. Do not duplicate this heading.
+- **IMPORTANT**: If the AI fit evaluation shows low scores (1-2 points) for any competency, you MUST objectively mention the weakness in the Overall Assessment. Do NOT be overly positive. Be honest about gaps.
 - Overall Assessment:
-  * Candidate's overall fit for this specific job (general strengths/weaknesses)
-  * Areas needing improvement
-  * Key points to emphasize in the resume
+  * Candidate's overall fit for this specific job (based on fit evaluation scores)
+  * Weaknesses and their potential impact on the application
+  * Key points to emphasize and strategies to compensate for weak areas
 - Competency Analysis:
-  * Strength/weakness analysis for each key competency
-  * How weak competencies were compensated
+  * Strength/weakness analysis for each key competency (reflect AI evaluation scores)
+  * How weak competencies were compensated (or limitations if compensation is difficult)
 - Detailed Revisions:
   * Show **"Original → Revised"** format for each change
   * Example: "'Worked on data analysis' → 'Analyzed 50K+ user behavior data points to identify churn patterns, reducing churn rate by 15%'"
