@@ -69,25 +69,29 @@ export function JobCard({ job, onClick }: JobCardProps) {
     }
   };
 
+  // Check if evaluation is done (has company or fit scores)
+  const hasEvaluation = (job.companyScore && job.companyScore > 0) || (job.fitScore && job.fitScore > 0);
+  const displayPriority = hasEvaluation ? job.priority : '-';
+
   return (
     <>
       <div
         onClick={onClick}
-        className="bg-card rounded-xl p-4 border border-border card-shadow cursor-pointer hover:card-shadow-lg transition-shadow active:scale-[0.98] group"
+        className="bg-card rounded-xl p-4 border border-border card-shadow cursor-pointer hover:card-shadow-lg transition-shadow active:scale-[0.98] group min-w-0"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground font-medium">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p className="text-xs text-muted-foreground font-medium truncate">
               {job.companyName}
             </p>
             <h3 className="font-semibold text-foreground truncate mt-0.5">
               {job.title}
             </h3>
           </div>
-          <div className="flex items-center gap-1">
-            <Badge className={cn('text-xs font-semibold', getPriorityColor(job.priority))}>
-              #{job.priority}
+          <div className="flex items-center gap-1 shrink-0">
+            <Badge className={cn('text-xs font-semibold', hasEvaluation ? getPriorityColor(job.priority) : 'text-muted-foreground bg-muted')}>
+              #{displayPriority}
             </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -117,10 +121,17 @@ export function JobCard({ job, onClick }: JobCardProps) {
           </div>
         </div>
 
-        {/* Position tag */}
-        <Badge variant="secondary" className="text-xs mb-3">
-          {job.position}
-        </Badge>
+        {/* Position and Language tags */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <Badge variant="secondary" className="text-xs shrink-0">
+            {job.position}
+          </Badge>
+          {job.language && (
+            <Badge variant="outline" className="text-[10px] shrink-0">
+              {job.language === 'ko' ? '🇰🇷 국문' : '🇺🇸 영문'}
+            </Badge>
+          )}
+        </div>
 
         {/* Date added */}
         <p className="text-xs text-muted-foreground mb-2">
@@ -132,7 +143,7 @@ export function JobCard({ job, onClick }: JobCardProps) {
           <div className="flex items-center gap-2">
             {job.fitScore && renderStars(job.fitScore)}
           </div>
-          <Badge className={cn('text-xs', STATUS_COLORS[job.status])}>
+          <Badge className={cn('text-xs shrink-0', STATUS_COLORS[job.status])}>
             {STATUS_LABELS[job.status]}
           </Badge>
         </div>

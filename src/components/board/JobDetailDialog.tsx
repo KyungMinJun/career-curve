@@ -563,7 +563,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onNavigateToCareer }:
               <Collapsible open={isDetailOpen} onOpenChange={setIsDetailOpen}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full justify-between px-0">
-                    <span className="font-semibold">자세히 보기 (회사 평가 5가지)</span>
+                    <span className="font-semibold">회사 평가하기 (자세히보기)</span>
                     <ChevronDown className={cn('w-4 h-4 transition-transform', isDetailOpen && 'rotate-180')} />
                   </Button>
                 </CollapsibleTrigger>

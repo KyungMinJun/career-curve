@@ -90,8 +90,13 @@ export function CareerTab() {
     return () => window.removeEventListener('navigate-to-tab', handler as EventListener);
   }, [tailoredResumes]);
 
-  const workExperiences = experiences.filter(e => e.type === 'work');
-  const projectExperiences = experiences.filter(e => e.type === 'project');
+  // Sort by createdAt descending (most recent first)
+  const workExperiences = experiences
+    .filter(e => e.type === 'work')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const projectExperiences = experiences
+    .filter(e => e.type === 'project')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const logResume = logResumeId ? resumes.find(r => r.id === logResumeId) : undefined;
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -724,13 +729,23 @@ function TailoredResumeCard({
     }
   };
   
+  // Check if created within last 24 hours
+  const isNew = (new Date().getTime() - new Date(resume.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+
   return (
     <div className="bg-secondary/30 rounded-lg p-3 group">
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm text-foreground truncate">
-            {resume.companyName} - {resume.jobTitle}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm text-foreground truncate">
+              {resume.companyName} - {resume.jobTitle}
+            </h3>
+            {isNew && (
+              <Badge variant="default" className="text-[10px] bg-primary text-primary-foreground shrink-0">
+                New!
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>{dateStr}</span>
             <Badge variant="outline" className="text-[10px]">

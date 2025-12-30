@@ -85,12 +85,18 @@ export default function Admin() {
       
       const userEmailMap: Record<string, string> = emailData?.userEmailMap || {};
 
-      // Fetch users with subscriptions and roles
+      // Fetch users with subscriptions and roles - get ALL profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, name, created_at');
+        .select('user_id, name, created_at')
+        .order('created_at', { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+      
+      console.log('Fetched profiles count:', profilesData?.length || 0);
 
       const usersWithDetails: UserWithSubscription[] = [];
 
