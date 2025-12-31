@@ -133,7 +133,10 @@ serve(async (req) => {
 당신은 AI 적합도 평가 결과를 기반으로 이력서를 **실제로 수정**해야 합니다:
 
 1. **경력 순서는 시간순으로 유지**: 경력(Work Experience)은 최근→과거 순으로 배치합니다. 순서 변경 불가.
-2. **프로젝트(Selected Projects)만 순서 조정 가능**: 공고와 관련도가 높은 프로젝트를 상단에 배치할 수 있습니다.
+2. **프로젝트(Selected Projects) 순서 조정**: 공고와 관련도가 높은 프로젝트를 상단에 배치합니다.
+   - **중요**: 순서를 변경한 경우, AI 피드백의 "프로젝트 순서 조정" 섹션에서 **반드시** 다음을 명시하세요:
+     * 원래 순서 → 변경된 순서
+     * 각 프로젝트가 해당 위치에 배치된 이유 (어떤 핵심 역량/요구사항과 관련있는지)
 3. **bullet point 내용 수정/강화**: 
    - 원본 bullet을 **반드시 다르게 작성**하세요.
    - 핵심 역량과 관련된 키워드, 수치, 성과를 **추가**하거나 **강조**하세요.
@@ -156,10 +159,11 @@ serve(async (req) => {
 (여기에 이력서 본문만)
 
 AI_FEEDBACK 작성 규칙(엄수):
-- 반드시 아래 3개 섹션으로 구성하세요 (## 종합 의견은 한 번만!):
+- 반드시 아래 4개 섹션으로 구성하세요:
   1) ## 종합 의견
   2) ## 역량 분석
-  3) ## 세부 수정 내용
+  3) ## 프로젝트 순서 조정
+  4) ## 세부 수정 내용
 - "## 종합 의견"은 **절대 중복 출력하지 마세요**. 한 번만 작성합니다.
 - **중요**: AI 적합도 평가에서 낮은 점수(1-2점)를 받은 역량이 있다면, 종합 의견에서 **객관적으로 약점을 언급**해야 합니다. 무조건 긍정적인 피드백은 금지입니다.
 - 종합 의견에는:
@@ -169,6 +173,10 @@ AI_FEEDBACK 작성 규칙(엄수):
 - 역량 분석에는:
   * 각 핵심 역량별 지원자 강점/약점 분석 (AI 평가 점수 반영)
   * 부족한 역량을 어떻게 보완했는지 (또는 보완이 어려운 경우 그 한계)
+- **프로젝트 순서 조정에는** (필수):
+  * 프로젝트 순서를 변경했다면: "원래 순서: A, B, C → 변경된 순서: B, A, C"
+  * 각 프로젝트 배치 이유: "프로젝트 B를 1순위로 배치한 이유: [핵심 역량 X]와 직접적으로 연관된 [구체적 근거]"
+  * 순서를 변경하지 않았다면: "기존 순서 유지 - 이유: [설명]"
 - 세부 수정 내용에는:
   * **원문 → 수정본** 형태로 구체적 변경 사항 나열
   * 예: "'프로젝트 진행' → '5명 팀을 리드하여 신규 기능 출시, MAU 30% 증가'"
@@ -186,7 +194,10 @@ RESUME 작성 규칙:
 You must **actively modify** the resume based on the AI fit evaluation results:
 
 1. **Keep Work Experience in Chronological Order**: Work experiences MUST remain in reverse chronological order (most recent first). This order CANNOT be changed.
-2. **Only Reorder Selected Projects**: You may reorder projects based on relevance to the job posting.
+2. **Reorder Selected Projects Based on Relevance**: You may reorder projects based on relevance to the job posting.
+   - **IMPORTANT**: If you change the order, you MUST explain in the "Project Order Adjustments" section:
+     * Original order → New order
+     * Why each project is placed in that position (which competency/requirement it addresses)
 3. **Rewrite Bullet Points**: 
    - **DO NOT copy original bullets verbatim.** 
    - Add specific metrics, keywords aligned with job requirements, and quantified achievements.
@@ -211,10 +222,11 @@ Output format (STRICT):
 (resume body only)
 
 AI_FEEDBACK rules (STRICT):
-- Use exactly these three sections (## Overall Assessment appears ONLY ONCE!):
+- Use exactly these four sections:
   1) ## Overall Assessment
   2) ## Competency Analysis
-  3) ## Detailed Revisions
+  3) ## Project Order Adjustments
+  4) ## Detailed Revisions
 - "## Overall Assessment" must appear **ONLY ONCE**. Do not duplicate this heading.
 - **IMPORTANT**: If the AI fit evaluation shows low scores (1-2 points) for any competency, you MUST objectively mention the weakness in the Overall Assessment. Do NOT be overly positive. Be honest about gaps.
 - Overall Assessment:
@@ -224,6 +236,10 @@ AI_FEEDBACK rules (STRICT):
 - Competency Analysis:
   * Strength/weakness analysis for each key competency (reflect AI evaluation scores)
   * How weak competencies were compensated (or limitations if compensation is difficult)
+- **Project Order Adjustments** (REQUIRED):
+  * If order was changed: "Original order: A, B, C → New order: B, A, C"
+  * Reason for each placement: "Project B placed first because: [specific connection to competency X]"
+  * If order was not changed: "Original order maintained - Reason: [explanation]"
 - Detailed Revisions:
   * Show **"Original → Revised"** format for each change
   * Example: "'Worked on data analysis' → 'Analyzed 50K+ user behavior data points to identify churn patterns, reducing churn rate by 15%'"
@@ -271,7 +287,7 @@ ${exp.bullets.map((b) => `- ${b}`).join("\n")}
 1) ===AI_FEEDBACK===에는:
 - 약한 역량을 어떻게 보완했는지
 - 강한 역량을 어떻게 부각했는지
-- 경험 순서를 어떻게 최적화했는지
+- **프로젝트 순서를 어떻게 조정했는지와 그 이유** (필수! "원래 순서 → 변경된 순서" 및 각 배치 이유 명시)
 2) ===RESUME===에는 이력서 본문만 작성.
 
 ## 표준 이력서 형식 (반드시 따를 것)
@@ -334,7 +350,7 @@ Request:
 1) In ===AI_FEEDBACK===:
 - How you compensated for weak competencies
 - How you highlighted strong competencies
-- How you optimized the experience order
+- **How you adjusted project order and WHY** (REQUIRED! Show "Original order → New order" and reason for each placement)
 2) In ===RESUME===, write ONLY the resume body.
 
 ## STANDARD RESUME FORMAT (Must Follow)

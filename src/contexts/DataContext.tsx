@@ -46,7 +46,9 @@ interface DataContextType {
   plans: ReturnType<typeof useSubscription>['plans'];
   canAddJob: (currentJobCount: number) => boolean;
   hasAiCredits: () => boolean;
+  hasResumeCredits: () => boolean;
   useAiCredit: (amount?: number) => Promise<boolean>;
+  useResumeCredit: (amount?: number) => Promise<boolean>;
   // Refetch
   refetch: () => Promise<void>;
 }
@@ -93,7 +95,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     plans: subscriptionData.plans,
     canAddJob: subscriptionData.canAddJob,
     hasAiCredits: subscriptionData.hasAiCredits,
+    hasResumeCredits: subscriptionData.hasResumeCredits,
     useAiCredit: subscriptionData.useAiCredit,
+    useResumeCredit: subscriptionData.useResumeCredit,
     // Refetch
     refetch: async () => {
       await Promise.all([supabaseData.refetch(), subscriptionData.refetch()]);

@@ -237,6 +237,7 @@ export type Database = {
           job_limit: number
           name: string
           price: number
+          resume_credits: number
         }
         Insert: {
           ai_credits?: number
@@ -248,6 +249,7 @@ export type Database = {
           job_limit?: number
           name: string
           price?: number
+          resume_credits?: number
         }
         Update: {
           ai_credits?: number
@@ -259,6 +261,7 @@ export type Database = {
           job_limit?: number
           name?: string
           price?: number
+          resume_credits?: number
         }
         Relationships: []
       }
@@ -410,6 +413,8 @@ export type Database = {
           expires_at: string | null
           id: string
           plan_id: string
+          resume_credits_remaining: number
+          resume_credits_used: number
           started_at: string
           updated_at: string
           user_id: string
@@ -421,6 +426,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           plan_id: string
+          resume_credits_remaining?: number
+          resume_credits_used?: number
           started_at?: string
           updated_at?: string
           user_id: string
@@ -432,6 +439,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           plan_id?: string
+          resume_credits_remaining?: number
+          resume_credits_used?: number
           started_at?: string
           updated_at?: string
           user_id?: string

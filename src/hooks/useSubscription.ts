@@ -8,7 +8,8 @@ export interface Plan {
   displayName: string;
   price: number;
   jobLimit: number;
-  aiCredits: number;
+  aiCredits: number; // AI 분석 크레딧 (analyze-job, evaluate-fit)
+  resumeCredits: number; // 맞춤 이력서 생성 크레딧
   features: string[];
 }
 
@@ -17,8 +18,10 @@ export interface Subscription {
   planId: string;
   planName: string;
   planDisplayName: string;
-  aiCreditsRemaining: number;
+  aiCreditsRemaining: number; // AI 분석 크레딧 잔여
   aiCreditsUsed: number;
+  resumeCreditsRemaining: number; // 이력서 생성 크레딧 잔여
+  resumeCreditsUsed: number;
   jobLimit: number;
   startedAt: Date;
   expiresAt?: Date;
@@ -62,6 +65,7 @@ export function useSubscription() {
         price: p.price,
         jobLimit: p.job_limit,
         aiCredits: p.ai_credits,
+        resumeCredits: (p as any).resume_credits || 0,
         features: (p.features as string[]) || [],
       })));
 
@@ -74,7 +78,8 @@ export function useSubscription() {
             name,
             display_name,
             job_limit,
-            ai_credits
+            ai_credits,
+            resume_credits
           )
         `)
         .eq('user_id', user.id)
@@ -91,6 +96,8 @@ export function useSubscription() {
           planDisplayName: plan.display_name,
           aiCreditsRemaining: subData.ai_credits_remaining,
           aiCreditsUsed: subData.ai_credits_used,
+          resumeCreditsRemaining: (subData as any).resume_credits_remaining || 0,
+          resumeCreditsUsed: (subData as any).resume_credits_used || 0,
           jobLimit: plan.job_limit,
           startedAt: new Date(subData.started_at),
           expiresAt: subData.expires_at ? new Date(subData.expires_at) : undefined,
@@ -116,13 +123,19 @@ export function useSubscription() {
     return currentJobCount < subscription.jobLimit;
   }, [subscription]);
 
-  // Check if user has AI credits
+  // Check if user has AI credits (for analyze-job, evaluate-fit)
   const hasAiCredits = useCallback(() => {
     if (!subscription) return false;
     return subscription.aiCreditsRemaining > 0;
   }, [subscription]);
 
-  // Use AI credit (call this when AI is used)
+  // Check if user has resume generation credits
+  const hasResumeCredits = useCallback(() => {
+    if (!subscription) return false;
+    return subscription.resumeCreditsRemaining > 0;
+  }, [subscription]);
+
+  // Use AI credit (for analyze-job, evaluate-fit)
   const useAiCredit = useCallback(async (amount: number = 1) => {
     if (!user || !subscription) return false;
     
@@ -152,13 +165,45 @@ export function useSubscription() {
     return true;
   }, [user, subscription]);
 
+  // Use resume credit (for generate-resume)
+  const useResumeCredit = useCallback(async (amount: number = 1) => {
+    if (!user || !subscription) return false;
+    
+    if (subscription.resumeCreditsRemaining < amount) {
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        resume_credits_remaining: subscription.resumeCreditsRemaining - amount,
+        resume_credits_used: subscription.resumeCreditsUsed + amount,
+      })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error using resume credit:', error);
+      return false;
+    }
+
+    setSubscription(prev => prev ? {
+      ...prev,
+      resumeCreditsRemaining: prev.resumeCreditsRemaining - amount,
+      resumeCreditsUsed: prev.resumeCreditsUsed + amount,
+    } : null);
+
+    return true;
+  }, [user, subscription]);
+
   return {
     isLoading,
     subscription,
     plans,
     canAddJob,
     hasAiCredits,
+    hasResumeCredits,
     useAiCredit,
+    useResumeCredit,
     refetch: fetchSubscription,
   };
 }
