@@ -16,12 +16,14 @@ interface PricingSheetProps {
 }
 
 export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
-  const { subscription, plans, tailoredResumes } = useData();
+  const { subscription, plans } = useData();
   
-  const usedResumeCount = tailoredResumes.length;
-  const maxFreeResumes = 3;
   const isFreePlan = subscription?.planName === 'free';
-  const remainingResumes = isFreePlan ? Math.max(0, maxFreeResumes - usedResumeCount) : '무제한';
+  
+  // Use actual subscription credits from DB
+  const resumeCreditsRemaining = subscription?.resumeCreditsRemaining ?? 0;
+  const resumeCreditsUsed = subscription?.resumeCreditsUsed ?? 0;
+  const totalResumeCredits = resumeCreditsRemaining + resumeCreditsUsed;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -44,7 +46,9 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">맞춤 이력서 생성</span>
             <span className="text-sm font-medium">
-              {isFreePlan ? `${usedResumeCount}/${maxFreeResumes}개 사용` : '무제한'}
+              {isFreePlan 
+                ? `${resumeCreditsUsed}/${totalResumeCredits > 0 ? totalResumeCredits : 0}개 사용` 
+                : `${resumeCreditsRemaining}개 남음`}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -99,7 +103,7 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
                 <ul className="space-y-2 mb-4">
                   <li className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span>맞춤 이력서 {plan.name === 'free' ? `${maxFreeResumes}개` : '무제한'}</span>
+                    <span>맞춤 이력서 {plan.resumeCredits >= 999999 ? '무제한' : `${plan.resumeCredits}개`}</span>
                   </li>
                   <li className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-primary flex-shrink-0" />

@@ -166,7 +166,8 @@ AI_FEEDBACK 작성 규칙(엄수):
   4) ## 세부 수정 내용
 - "## 종합 의견"은 **절대 중복 출력하지 마세요**. 한 번만 작성합니다.
 - **중요**: AI 적합도 평가에서 낮은 점수(1-2점)를 받은 역량이 있다면, 종합 의견에서 **객관적으로 약점을 언급**해야 합니다. 무조건 긍정적인 피드백은 금지입니다.
-- 종합 의견에는:
+- **매우 중요**: "## 종합 의견" 섹션은 반드시 **한국어로** 작성하세요. 공고 언어(영어/한국어)와 무관하게 종합 의견은 항상 한국어입니다.
+- 종합 의견에는 (한국어로):
   * 이 공고에 대한 지원자 적합도 (전반적인 강점/약점 - 적합도 평가 점수 기반)
   * 부족한 역량과 그것이 채용에 미칠 수 있는 영향
   * 강조할 핵심 포인트와 약점을 보완하기 위한 전략
@@ -223,16 +224,17 @@ Output format (STRICT):
 
 AI_FEEDBACK rules (STRICT):
 - Use exactly these four sections:
-  1) ## Overall Assessment
+  1) ## 종합 의견 (MUST BE IN KOREAN)
   2) ## Competency Analysis
   3) ## Project Order Adjustments
   4) ## Detailed Revisions
-- "## Overall Assessment" must appear **ONLY ONCE**. Do not duplicate this heading.
-- **IMPORTANT**: If the AI fit evaluation shows low scores (1-2 points) for any competency, you MUST objectively mention the weakness in the Overall Assessment. Do NOT be overly positive. Be honest about gaps.
-- Overall Assessment:
-  * Candidate's overall fit for this specific job (based on fit evaluation scores)
-  * Weaknesses and their potential impact on the application
-  * Key points to emphasize and strategies to compensate for weak areas
+- "## 종합 의견" must appear **ONLY ONCE**. Do not duplicate this heading.
+- **CRITICAL**: The "## 종합 의견" section MUST be written in **Korean language** regardless of the job posting language. This is non-negotiable.
+- **IMPORTANT**: If the AI fit evaluation shows low scores (1-2 points) for any competency, you MUST objectively mention the weakness in the 종합 의견. Do NOT be overly positive. Be honest about gaps.
+- 종합 의견 (in Korean):
+  * 이 공고에 대한 지원자 적합도 (강점/약점 - 적합도 평가 점수 기반)
+  * 부족한 역량과 채용에 미칠 수 있는 영향
+  * 강조할 핵심 포인트와 약점 보완 전략
 - Competency Analysis:
   * Strength/weakness analysis for each key competency (reflect AI evaluation scores)
   * How weak competencies were compensated (or limitations if compensation is difficult)

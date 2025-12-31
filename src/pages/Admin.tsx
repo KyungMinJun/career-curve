@@ -153,12 +153,23 @@ export default function Admin() {
       const plan = plans.find(p => p.id === planId);
       if (!plan) return;
 
+      // Fetch current plan credits from DB
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('ai_credits, resume_credits')
+        .eq('id', planId)
+        .single();
+
+      if (planError) throw planError;
+
       const { error } = await supabase
         .from('user_subscriptions')
         .update({
           plan_id: planId,
-          ai_credits_remaining: plan.aiCredits,
+          ai_credits_remaining: planData.ai_credits,
           ai_credits_used: 0,
+          resume_credits_remaining: planData.resume_credits,
+          resume_credits_used: 0,
           started_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
