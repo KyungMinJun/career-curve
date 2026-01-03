@@ -103,6 +103,47 @@ export type Database = {
           },
         ]
       }
+      credit_usage_history: {
+        Row: {
+          action: string
+          amount: number
+          created_at: string
+          credit_type: string
+          description: string | null
+          id: string
+          job_posting_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          amount: number
+          created_at?: string
+          credit_type: string
+          description?: string | null
+          id?: string
+          job_posting_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number
+          created_at?: string
+          credit_type?: string
+          description?: string | null
+          id?: string
+          job_posting_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_usage_history_job_posting_id_fkey"
+            columns: ["job_posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiences: {
         Row: {
           bullets: Json | null
@@ -225,6 +266,57 @@ export type Database = {
           work_type_evidence?: string | null
         }
         Relationships: []
+      }
+      plan_change_history: {
+        Row: {
+          ai_credits_at_change: number | null
+          change_reason: string | null
+          changed_by: string
+          created_at: string
+          from_plan_id: string | null
+          id: string
+          resume_credits_at_change: number | null
+          to_plan_id: string
+          user_id: string
+        }
+        Insert: {
+          ai_credits_at_change?: number | null
+          change_reason?: string | null
+          changed_by: string
+          created_at?: string
+          from_plan_id?: string | null
+          id?: string
+          resume_credits_at_change?: number | null
+          to_plan_id: string
+          user_id: string
+        }
+        Update: {
+          ai_credits_at_change?: number | null
+          change_reason?: string | null
+          changed_by?: string
+          created_at?: string
+          from_plan_id?: string | null
+          id?: string
+          resume_credits_at_change?: number | null
+          to_plan_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_change_history_from_plan_id_fkey"
+            columns: ["from_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_change_history_to_plan_id_fkey"
+            columns: ["to_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plans: {
         Row: {

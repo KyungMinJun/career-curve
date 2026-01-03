@@ -97,7 +97,7 @@ export default function Auth() {
           navigate('/');
         }
       } else {
-        const { error } = await signUp(formData.email, formData.password, {
+        const { error, data } = await signUp(formData.email, formData.password, {
           ko: formData.nameKo.trim(),
           en: formData.nameEn.trim(),
         });
@@ -108,8 +108,13 @@ export default function Auth() {
             toast.error(error.message);
           }
         } else {
-          toast.success('회원가입이 완료되었습니다');
-          navigate('/');
+          // Check if email confirmation is required
+          if (data?.user && !data.session) {
+            toast.success('이메일로 확인 링크를 보냈습니다. 이메일을 확인해주세요.');
+          } else {
+            toast.success('회원가입이 완료되었습니다');
+            navigate('/');
+          }
         }
       }
     } finally {

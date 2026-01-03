@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { ArrowLeft, Users, CreditCard, Shield, Search } from 'lucide-react';
+import { ArrowLeft, Users, CreditCard, Shield, Search, Eye, Plus } from 'lucide-react';
+import { UserDetailSheet } from '@/components/admin/UserDetailSheet';
 
 interface UserWithSubscription {
   id: string;
@@ -18,11 +19,14 @@ interface UserWithSubscription {
   email: string;
   createdAt: Date;
   role: 'admin' | 'user';
+  planId: string;
   planName: string;
   planDisplayName: string;
   aiCreditsRemaining: number;
   aiCreditsUsed: number;
-  totalCreditsGranted: number;
+  resumeCreditsRemaining: number;
+  resumeCreditsUsed: number;
+  jobLimit: number;
 }
 
 interface Plan {
@@ -32,6 +36,7 @@ interface Plan {
   price: number;
   jobLimit: number;
   aiCredits: number;
+  resumeCredits: number;
 }
 
 export default function Admin() {
@@ -42,6 +47,9 @@ export default function Admin() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState('');
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !roleLoading) {
@@ -74,6 +82,7 @@ export default function Admin() {
         price: p.price,
         jobLimit: p.job_limit,
         aiCredits: p.ai_credits,
+        resumeCredits: p.resume_credits,
       })));
 
       // Fetch user emails from edge function
@@ -95,8 +104,6 @@ export default function Admin() {
         console.error('Error fetching profiles:', profilesError);
         throw profilesError;
       }
-      
-      console.log('Fetched profiles count:', profilesData?.length || 0);
 
       const usersWithDetails: UserWithSubscription[] = [];
 
@@ -106,7 +113,7 @@ export default function Admin() {
           .from('user_subscriptions')
           .select(`
             *,
-            plans (name, display_name, ai_credits)
+            plans (id, name, display_name, ai_credits, resume_credits, job_limit)
           `)
           .eq('user_id', profile.user_id)
           .maybeSingle();
@@ -118,12 +125,7 @@ export default function Admin() {
           .eq('user_id', profile.user_id)
           .maybeSingle();
 
-        // Calculate total credits granted (plan credits + remaining - used + used = plan credits + any bonus)
-        const planCredits = (subData?.plans as any)?.ai_credits || 0;
-        const remaining = subData?.ai_credits_remaining || 0;
-        const used = subData?.ai_credits_used || 0;
-        // Total granted = used + remaining (this represents what they've been given in total)
-        const totalGranted = used + remaining;
+        const plan = subData?.plans as any;
 
         usersWithDetails.push({
           id: profile.user_id,
@@ -131,11 +133,14 @@ export default function Admin() {
           email: userEmailMap[profile.user_id] || 'N/A',
           createdAt: new Date(profile.created_at),
           role: (roleData?.role as 'admin' | 'user') || 'user',
-          planName: (subData?.plans as any)?.name || 'free',
-          planDisplayName: (subData?.plans as any)?.display_name || 'Free',
-          aiCreditsRemaining: remaining,
-          aiCreditsUsed: used,
-          totalCreditsGranted: totalGranted,
+          planId: subData?.plan_id || '',
+          planName: plan?.name || 'free',
+          planDisplayName: plan?.display_name || 'Free',
+          aiCreditsRemaining: subData?.ai_credits_remaining || 0,
+          aiCreditsUsed: subData?.ai_credits_used || 0,
+          resumeCreditsRemaining: subData?.resume_credits_remaining || 0,
+          resumeCreditsUsed: subData?.resume_credits_used || 0,
+          jobLimit: plan?.job_limit || 5,
         });
       }
 
@@ -148,27 +153,39 @@ export default function Admin() {
     }
   };
 
-  const handlePlanChange = async (userId: string, planId: string) => {
+  const handlePlanChange = async (userId: string, newPlanId: string) => {
     try {
-      const plan = plans.find(p => p.id === planId);
-      if (!plan) return;
+      const userSub = users.find(u => u.id === userId);
+      if (!userSub) return;
 
-      // Fetch current plan credits from DB
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('ai_credits, resume_credits')
-        .eq('id', planId)
-        .single();
+      const oldPlanId = userSub.planId;
+      const newPlan = plans.find(p => p.id === newPlanId);
+      if (!newPlan) return;
 
-      if (planError) throw planError;
+      // Record plan change history first
+      const { error: historyError } = await supabase
+        .from('plan_change_history')
+        .insert({
+          user_id: userId,
+          from_plan_id: oldPlanId || null,
+          to_plan_id: newPlanId,
+          changed_by: user?.id,
+          ai_credits_at_change: userSub.aiCreditsRemaining,
+          resume_credits_at_change: userSub.resumeCreditsRemaining,
+        });
 
+      if (historyError) {
+        console.error('Error recording plan history:', historyError);
+      }
+
+      // Update subscription with new plan and reset credits
       const { error } = await supabase
         .from('user_subscriptions')
         .update({
-          plan_id: planId,
-          ai_credits_remaining: planData.ai_credits,
+          plan_id: newPlanId,
+          ai_credits_remaining: newPlan.aiCredits,
           ai_credits_used: 0,
-          resume_credits_remaining: planData.resume_credits,
+          resume_credits_remaining: newPlan.resumeCredits,
           resume_credits_used: 0,
           started_at: new Date().toISOString(),
         })
@@ -176,7 +193,7 @@ export default function Admin() {
 
       if (error) throw error;
 
-      toast.success('플랜이 변경되었습니다');
+      toast.success(`플랜이 ${newPlan.displayName}(으)로 변경되었습니다`);
       fetchData();
     } catch (error) {
       console.error('Error updating plan:', error);
@@ -201,26 +218,45 @@ export default function Admin() {
     }
   };
 
-  const handleAddCredits = async (userId: string, amount: number) => {
+  const handleAddCredits = async (userId: string, creditType: 'ai' | 'resume', amount: number) => {
     try {
       const userSub = users.find(u => u.id === userId);
       if (!userSub) return;
 
+      const updateData = creditType === 'ai' 
+        ? { ai_credits_remaining: userSub.aiCreditsRemaining + amount }
+        : { resume_credits_remaining: userSub.resumeCreditsRemaining + amount };
+
       const { error } = await supabase
         .from('user_subscriptions')
-        .update({
-          ai_credits_remaining: userSub.aiCreditsRemaining + amount,
-        })
+        .update(updateData)
         .eq('user_id', userId);
 
       if (error) throw error;
 
-      toast.success(`${amount} 크레딧이 추가되었습니다`);
+      // Record credit grant
+      await supabase
+        .from('credit_usage_history')
+        .insert({
+          user_id: userId,
+          credit_type: creditType,
+          amount: amount,
+          action: 'admin-grant',
+          description: `관리자가 ${amount} 크레딧 지급`,
+        });
+
+      toast.success(`${creditType === 'ai' ? 'AI' : '이력서'} ${amount} 크레딧이 추가되었습니다`);
       fetchData();
     } catch (error) {
       console.error('Error adding credits:', error);
       toast.error('크레딧 추가 중 오류가 발생했습니다');
     }
+  };
+
+  const openUserDetail = (userId: string, userName: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setDetailSheetOpen(true);
   };
 
   if (authLoading || roleLoading || isLoading) {
@@ -297,7 +333,7 @@ export default function Admin() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -305,7 +341,8 @@ export default function Admin() {
                   <TableHead>가입일</TableHead>
                   <TableHead>권한</TableHead>
                   <TableHead>플랜</TableHead>
-                  <TableHead>크레딧 (사용/부여)</TableHead>
+                  <TableHead>AI 크레딧</TableHead>
+                  <TableHead>이력서 크레딧</TableHead>
                   <TableHead>작업</TableHead>
                 </TableRow>
               </TableHeader>
@@ -345,7 +382,7 @@ export default function Admin() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={plans.find(p => p.name === u.planName)?.id || ''}
+                        value={u.planId}
                         onValueChange={(value) => handlePlanChange(u.id, value)}
                       >
                         <SelectTrigger className="w-28">
@@ -361,22 +398,43 @@ export default function Admin() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
                         <Badge variant="outline">
-                          {u.aiCreditsUsed} / {u.totalCreditsGranted}
+                          {u.aiCreditsRemaining} / {u.aiCreditsUsed + u.aiCreditsRemaining}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          잔여: {u.aiCreditsRemaining}
-                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleAddCredits(u.id, 'ai', 10)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {u.resumeCreditsRemaining} / {u.resumeCreditsUsed + u.resumeCreditsRemaining}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleAddCredits(u.id, 'resume', 5)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleAddCredits(u.id, 100)}
+                        onClick={() => openUserDetail(u.id, u.name)}
                       >
-                        +100 크레딧
+                        <Eye className="h-4 w-4 mr-1" />
+                        상세
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -399,6 +457,7 @@ export default function Admin() {
                   <TableHead>가격</TableHead>
                   <TableHead>공고 제한</TableHead>
                   <TableHead>AI 크레딧</TableHead>
+                  <TableHead>이력서 크레딧</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -411,7 +470,8 @@ export default function Admin() {
                     <TableCell>
                       {p.jobLimit >= 999999 ? '무제한' : `${p.jobLimit}개`}
                     </TableCell>
-                    <TableCell>{p.aiCredits}</TableCell>
+                    <TableCell>{p.aiCredits}회</TableCell>
+                    <TableCell>{p.resumeCredits}회</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -419,6 +479,14 @@ export default function Admin() {
           </CardContent>
         </Card>
       </div>
+
+      {/* User Detail Sheet */}
+      <UserDetailSheet
+        open={detailSheetOpen}
+        onOpenChange={setDetailSheetOpen}
+        userId={selectedUserId}
+        userName={selectedUserName}
+      />
     </div>
   );
 }
