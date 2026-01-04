@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DataProvider } from "@/contexts/DataContext";
+import { useDeviceFingerprint } from "@/hooks/useDeviceFingerprint";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
@@ -19,6 +19,8 @@ const queryClient = new QueryClient();
 
 function AppWithProviders() {
   const { user, isLoading } = useAuth();
+  // Initialize device fingerprint for logged-in users (abuse detection)
+  useDeviceFingerprint();
 
   if (isLoading) {
     return (

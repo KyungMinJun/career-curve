@@ -23,6 +23,8 @@ export interface Subscription {
   resumeCreditsRemaining: number; // 이력서 생성 크레딧 잔여
   resumeCreditsUsed: number;
   jobLimit: number;
+  phoneVerified: boolean;
+  phoneVerifiedAt?: Date;
   startedAt: Date;
   expiresAt?: Date;
 }
@@ -99,6 +101,8 @@ export function useSubscription() {
           resumeCreditsRemaining: (subData as any).resume_credits_remaining || 0,
           resumeCreditsUsed: (subData as any).resume_credits_used || 0,
           jobLimit: plan.job_limit,
+          phoneVerified: (subData as any).phone_verified || false,
+          phoneVerifiedAt: (subData as any).phone_verified_at ? new Date((subData as any).phone_verified_at) : undefined,
           startedAt: new Date(subData.started_at),
           expiresAt: subData.expires_at ? new Date(subData.expires_at) : undefined,
         });

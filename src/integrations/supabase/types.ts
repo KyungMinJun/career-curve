@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      abuse_detection_logs: {
+        Row: {
+          action_taken: string | null
+          created_at: string
+          details: Json | null
+          detection_type: string
+          fingerprint: string | null
+          id: string
+          phone_number: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string
+          details?: Json | null
+          detection_type: string
+          fingerprint?: string | null
+          id?: string
+          phone_number?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string
+          details?: Json | null
+          detection_type?: string
+          fingerprint?: string | null
+          id?: string
+          phone_number?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       career_goals: {
         Row: {
           archived_at: string | null
@@ -144,6 +177,36 @@ export type Database = {
           },
         ]
       }
+      device_fingerprints: {
+        Row: {
+          created_at: string
+          fingerprint: string
+          id: string
+          ip_address: string | null
+          last_seen_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fingerprint: string
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       experiences: {
         Row: {
           bullets: Json | null
@@ -264,6 +327,30 @@ export type Database = {
           visa_sponsorship_evidence?: string | null
           work_type?: string | null
           work_type_evidence?: string | null
+        }
+        Relationships: []
+      }
+      phone_verifications: {
+        Row: {
+          created_at: string
+          id: string
+          phone_number: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_number: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_number?: string
+          user_id?: string
+          verified_at?: string
         }
         Relationships: []
       }
@@ -504,6 +591,8 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          phone_verified: boolean
+          phone_verified_at: string | null
           plan_id: string
           resume_credits_remaining: number
           resume_credits_used: number
@@ -517,6 +606,8 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          phone_verified?: boolean
+          phone_verified_at?: string | null
           plan_id: string
           resume_credits_remaining?: number
           resume_credits_used?: number
@@ -530,6 +621,8 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          phone_verified?: boolean
+          phone_verified_at?: string | null
           plan_id?: string
           resume_credits_remaining?: number
           resume_credits_used?: number
@@ -552,6 +645,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_fingerprint_abuse: { Args: { fp: string }; Returns: Json }
+      check_phone_available: { Args: { phone: string }; Returns: boolean }
+      complete_phone_verification: { Args: { phone: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -11,10 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save, ExternalLink, X } from 'lucide-react';
+import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save, ExternalLink, X, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useData } from '@/contexts/DataContext';
+import { usePhoneVerification } from '@/hooks/usePhoneVerification';
+import { PhoneVerificationDialog } from '@/components/auth/PhoneVerificationDialog';
 
 interface ResumeBuilderDialogProps {
   open: boolean;
@@ -74,10 +76,13 @@ export function ResumeBuilderDialog({
   const [isSaved, setIsSaved] = useState(false);
   const [lastSavedTailoredResumeId, setLastSavedTailoredResumeId] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
   const { addTailoredResume, hasResumeCredits, useResumeCredit, subscription } = useData();
+  const { isVerified: isPhoneVerified, isLoading: isPhoneLoading, refetch: refetchPhone } = usePhoneVerification();
 
   const hasCredits = hasResumeCredits();
   const isPaidPlan = subscription?.planName !== 'free';
+  const needsPhoneVerification = !isPhoneVerified && !isPhoneLoading;
 
   const workExperiences = useMemo(() => experiences.filter(e => e.type === 'work'), [experiences]);
   const projectExperiences = useMemo(() => experiences.filter(e => e.type === 'project'), [experiences]);
@@ -135,6 +140,12 @@ export function ResumeBuilderDialog({
 
     if (!hasCredits) {
       toast.error('이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
+      return;
+    }
+
+    // Check if phone verification is required
+    if (needsPhoneVerification) {
+      setShowPhoneDialog(true);
       return;
     }
 
@@ -361,113 +372,134 @@ export function ResumeBuilderDialog({
     onOpenChange(open);
   };
 
+  const handlePhoneVerified = () => {
+    refetchPhone();
+    // User can now click generate again
+  };
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] rounded-2xl flex flex-col p-0">
-        <div className="px-6 pt-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              맞춤 이력서 만들기
-            </DialogTitle>
-          </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-md max-h-[85vh] rounded-2xl flex flex-col p-0">
+          <div className="px-6 pt-6">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                맞춤 이력서 만들기
+              </DialogTitle>
+            </DialogHeader>
 
-          <div className="flex items-center gap-2 mt-4">
-            <div className={cn('flex-1 h-1 rounded-full', step >= 1 ? 'bg-primary' : 'bg-muted')} />
-            <div className={cn('flex-1 h-1 rounded-full', step >= 2 ? 'bg-primary' : 'bg-muted')} />
+            <div className="flex items-center gap-2 mt-4">
+              <div className={cn('flex-1 h-1 rounded-full', step >= 1 ? 'bg-primary' : 'bg-muted')} />
+              <div className={cn('flex-1 h-1 rounded-full', step >= 2 ? 'bg-primary' : 'bg-muted')} />
+            </div>
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {step === 1 && <Step1 />}
-          {step === 2 && <Step2 />}
-        </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {step === 1 && <Step1 />}
+            {step === 2 && <Step2 />}
+          </div>
 
-        <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
-          {step === 1 && !generatedContent && (
-            <div className="flex flex-col gap-2">
-              {!isPaidPlan && (
-                <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
-                  맞춤 이력서 생성은 유료 요금제 전용 기능입니다.
-                </div>
-              )}
-              {isPaidPlan && !hasCredits && (
-                <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
-                  이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.
-                </div>
-              )}
-              {isPaidPlan && hasCredits && !isGenerating && (
-                <div className="bg-muted/50 text-muted-foreground text-xs p-2 rounded-lg text-center">
-                  20초 정도 소요됩니다. 중간에 창을 닫거나 나가면 저장되지 않습니다.
-                </div>
-              )}
-              {isGenerating && (
-                <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center">
-                  생성 중... 20초 정도 소요됩니다. 중간에 창을 닫거나 나가면 저장되지 않습니다.
-                </div>
-              )}
-              {isGenerating ? (
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={handleAbort}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  중단하기
-                </Button>
-              ) : (
-                <Button
-                  className="w-full"
-                  onClick={handleGenerate}
-                  disabled={selectedExperiences.length === 0 || !hasCredits || !isPaidPlan}
-                >
-                  맞춤 이력서 생성
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="flex flex-col gap-2">
-              {!isSaved ? (
-                <>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={handleCopyToClipboard}>
-                      <Copy className="w-4 h-4 mr-2" />
-                      복사
-                    </Button>
-                    <Button className="flex-1" onClick={handleSaveToCareer}>
-                      <Save className="w-4 h-4 mr-2" />
-                      공고별 이력서 저장
-                    </Button>
+          <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
+            {step === 1 && !generatedContent && (
+              <div className="flex flex-col gap-2">
+                {!isPaidPlan && (
+                  <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
+                    맞춤 이력서 생성은 유료 요금제 전용 기능입니다.
                   </div>
+                )}
+                {isPaidPlan && !hasCredits && (
+                  <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
+                    이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.
+                  </div>
+                )}
+                {isPaidPlan && hasCredits && needsPhoneVerification && (
+                  <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center flex items-center justify-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" />
+                    전화번호 인증 후 사용 가능합니다.
+                  </div>
+                )}
+                {isPaidPlan && hasCredits && !needsPhoneVerification && !isGenerating && (
+                  <div className="bg-muted/50 text-muted-foreground text-xs p-2 rounded-lg text-center">
+                    20초 정도 소요됩니다. 중간에 창을 닫거나 나가면 저장되지 않습니다.
+                  </div>
+                )}
+                {isGenerating && (
+                  <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center">
+                    생성 중... 20초 정도 소요됩니다. 중간에 창을 닫거나 나가면 저장되지 않습니다.
+                  </div>
+                )}
+                {isGenerating ? (
                   <Button
-                    variant="ghost"
-                    className="w-full text-muted-foreground"
-                    onClick={() => {
-                      setStep(1);
-                      setGeneratedContent(null);
-                    }}
+                    variant="destructive"
+                    className="w-full"
+                    onClick={handleAbort}
                   >
-                    다시 생성하기
+                    <X className="w-4 h-4 mr-2" />
+                    중단하기
                   </Button>
-                </>
-              ) : (
-                <>
-                  <Button className="w-full" onClick={handleNavigateToCareer}>
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    공고별 이력서 확인하기
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={handleGenerate}
+                    disabled={selectedExperiences.length === 0 || !hasCredits || !isPaidPlan}
+                  >
+                    {needsPhoneVerification && <Shield className="w-4 h-4 mr-2" />}
+                    맞춤 이력서 생성
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-                  <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
-                    닫기
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+                )}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="flex flex-col gap-2">
+                {!isSaved ? (
+                  <>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={handleCopyToClipboard}>
+                        <Copy className="w-4 h-4 mr-2" />
+                        복사
+                      </Button>
+                      <Button className="flex-1" onClick={handleSaveToCareer}>
+                        <Save className="w-4 h-4 mr-2" />
+                        공고별 이력서 저장
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="w-full text-muted-foreground"
+                      onClick={() => {
+                        setStep(1);
+                        setGeneratedContent(null);
+                      }}
+                    >
+                      다시 생성하기
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button className="w-full" onClick={handleNavigateToCareer}>
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      공고별 이력서 확인하기
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+                      닫기
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <PhoneVerificationDialog
+        open={showPhoneDialog}
+        onOpenChange={setShowPhoneDialog}
+        onVerified={handlePhoneVerified}
+        triggerReason="resume_generation"
+      />
+    </>
   );
 }
 
