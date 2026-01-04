@@ -18,7 +18,7 @@ interface FitEvaluationButtonProps {
 export function FitEvaluationButton({ keyCompetencies, experiences, minExperience, onEvaluated }: FitEvaluationButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneDialog, setShowPhoneDialog] = useState(false);
-  const { hasAiCredits, useAiCredit } = useData();
+  const { hasAiCredits } = useData();
   const { isVerified: isPhoneVerified, isLoading: isPhoneLoading, refetch: refetchPhone } = usePhoneVerification();
 
   const hasCompetencies = keyCompetencies && keyCompetencies.length > 0;
@@ -29,13 +29,7 @@ export function FitEvaluationButton({ keyCompetencies, experiences, minExperienc
   const performEvaluation = async () => {
     setIsLoading(true);
     try {
-      // Use AI credit first
-      const creditUsed = await useAiCredit(1);
-      if (!creditUsed) {
-        toast.error('AI 크레딧 사용에 실패했습니다.');
-        return;
-      }
-
+      // Credits are now deducted server-side in the edge function
       const { data, error } = await supabase.functions.invoke('evaluate-fit', {
         body: {
           keyCompetencies,
@@ -45,6 +39,15 @@ export function FitEvaluationButton({ keyCompetencies, experiences, minExperienc
       });
 
       if (error) throw error;
+
+      // Handle specific error codes from server-side credit check
+      if (!data?.success && data?.error) {
+        if (data.error === 'Insufficient AI credits') {
+          toast.error('AI 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       if (data?.evaluatedCompetencies) {
         onEvaluated(data.evaluatedCompetencies, data.minimumRequirements);

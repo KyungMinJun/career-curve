@@ -77,7 +77,7 @@ export function ResumeBuilderDialog({
   const [lastSavedTailoredResumeId, setLastSavedTailoredResumeId] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [showPhoneDialog, setShowPhoneDialog] = useState(false);
-  const { addTailoredResume, hasResumeCredits, useResumeCredit, subscription } = useData();
+  const { addTailoredResume, hasResumeCredits, subscription } = useData();
   const { isVerified: isPhoneVerified, isLoading: isPhoneLoading, refetch: refetchPhone } = usePhoneVerification();
 
   const hasCredits = hasResumeCredits();
@@ -156,14 +156,7 @@ export function ResumeBuilderDialog({
     setAiFeedback(null);
 
     try {
-      // Use resume credit first
-      const creditUsed = await useResumeCredit(1);
-      if (!creditUsed) {
-        toast.error('이력서 생성 크레딧 사용에 실패했습니다.');
-        setIsGenerating(false);
-        return;
-      }
-
+      // Credits are now deducted server-side in the edge function
       const selectedExps = experiences.filter(e => selectedExperiences.includes(e.id));
 
       const { data, error } = await supabase.functions.invoke('generate-resume', {
@@ -190,7 +183,15 @@ export function ResumeBuilderDialog({
       }
 
       if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to generate resume');
+      
+      // Handle specific error codes from server-side credit check
+      if (!data?.success && data?.error) {
+        if (data.error === 'Insufficient resume credits') {
+          toast.error('이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       setGeneratedContent(data.content);
       setAiFeedback(data.aiFeedback || null);

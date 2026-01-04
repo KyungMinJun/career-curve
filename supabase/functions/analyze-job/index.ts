@@ -146,6 +146,49 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id);
 
+    // Atomic credit check and deduction (prevents race condition)
+    const { data: subscription, error: subError } = await supabaseClient
+      .from('user_subscriptions')
+      .select('ai_credits_remaining, ai_credits_used')
+      .eq('user_id', user.id)
+      .single();
+
+    if (subError || !subscription) {
+      console.error('Subscription fetch error:', subError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Subscription not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (subscription.ai_credits_remaining < 1) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Insufficient AI credits' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Optimistic concurrency control - only update if credits haven't changed
+    const { error: creditError, count: updatedCount } = await supabaseClient
+      .from('user_subscriptions')
+      .update({
+        ai_credits_remaining: subscription.ai_credits_remaining - 1,
+        ai_credits_used: (subscription.ai_credits_used || 0) + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id)
+      .eq('ai_credits_remaining', subscription.ai_credits_remaining);
+
+    if (creditError || updatedCount === 0) {
+      console.error('Credit deduction failed (race condition):', creditError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Credit deduction failed. Please try again.' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('AI credit deducted successfully');
+
     // Parse and validate input
     const rawBody = await req.json();
     const validationResult = requestSchema.safeParse(rawBody);

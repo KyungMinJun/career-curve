@@ -37,7 +37,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { messages, addMessage, updateMessage, addJobPosting, jobPostings, canAddJob, subscription, hasAiCredits, useAiCredit } = useData();
+  const { messages, addMessage, updateMessage, addJobPosting, jobPostings, canAddJob, subscription, hasAiCredits } = useData();
 
   const isAtJobLimit = !canAddJob(jobPostings.length);
   const hasAnalysisCredits = hasAiCredits();
@@ -82,18 +82,13 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   };
 
   const processJobUrl = async (url: string) => {
-    // Check AI analysis credits first
+    // Check AI analysis credits first (UI-only check, actual deduction happens server-side)
     if (!hasAnalysisCredits) {
       toast.error('AI 분석 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
       return;
     }
 
-    // Use AI credit for analysis
-    const creditUsed = await useAiCredit(1);
-    if (!creditUsed) {
-      toast.error('AI 크레딧 사용에 실패했습니다.');
-      return;
-    }
+    // Credits are now deducted server-side in the edge function
 
     // Add processing message
     const processingMsgId = await addMessage({
