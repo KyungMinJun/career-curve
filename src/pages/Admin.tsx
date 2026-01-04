@@ -105,29 +105,32 @@ export default function Admin() {
         throw profilesError;
       }
 
-      const usersWithDetails: UserWithSubscription[] = [];
+      // Get all user IDs for batch queries
+      const userIds = (profilesData || []).map(p => p.user_id);
 
-      for (const profile of profilesData || []) {
-        // Get subscription with plan details
-        const { data: subData } = await supabase
-          .from('user_subscriptions')
-          .select(`
-            *,
-            plans (id, name, display_name, ai_credits, resume_credits, job_limit)
-          `)
-          .eq('user_id', profile.user_id)
-          .maybeSingle();
+      // Batch fetch ALL subscriptions (1 query instead of N)
+      const { data: allSubscriptions } = await supabase
+        .from('user_subscriptions')
+        .select(`
+          user_id,
+          *,
+          plans (id, name, display_name, ai_credits, resume_credits, job_limit)
+        `)
+        .in('user_id', userIds);
 
-        // Get role
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profile.user_id)
-          .maybeSingle();
+      // Batch fetch ALL roles (1 query instead of N)
+      const { data: allRoles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds);
 
+      // Map data in memory (fast O(N) operation)
+      const usersWithDetails: UserWithSubscription[] = (profilesData || []).map(profile => {
+        const subData = allSubscriptions?.find(s => s.user_id === profile.user_id);
+        const roleData = allRoles?.find(r => r.user_id === profile.user_id);
         const plan = subData?.plans as any;
 
-        usersWithDetails.push({
+        return {
           id: profile.user_id,
           name: profile.name || '이름 없음',
           email: userEmailMap[profile.user_id] || 'N/A',
@@ -141,8 +144,8 @@ export default function Admin() {
           resumeCreditsRemaining: subData?.resume_credits_remaining || 0,
           resumeCreditsUsed: subData?.resume_credits_used || 0,
           jobLimit: plan?.job_limit || 5,
-        });
-      }
+        };
+      });
 
       setUsers(usersWithDetails);
     } catch (error) {
