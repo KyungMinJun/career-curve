@@ -1,4 +1,4 @@
-import { Check, Crown, Sparkles } from 'lucide-react';
+import { Check, Crown, Sparkles, ShieldCheck } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -16,14 +16,37 @@ interface PricingSheetProps {
 }
 
 export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
-  const { subscription, plans } = useData();
+  const { subscription, plans, jobPostings } = useData();
   
-  const isFreePlan = subscription?.planName === 'free';
-  
-  // Use actual subscription credits from DB
-  const resumeCreditsRemaining = subscription?.resumeCreditsRemaining ?? 0;
-  const resumeCreditsUsed = subscription?.resumeCreditsUsed ?? 0;
-  const totalResumeCredits = resumeCreditsRemaining + resumeCreditsUsed;
+  const currentJobCount = jobPostings?.length || 0;
+
+  // Plan feature descriptions
+  const planFeatures = {
+    free: [
+      { label: '채팅 공고 분석', value: '5개' },
+      { label: '공고 저장', value: '5개' },
+      { label: 'AI 적합도 평가', value: '3개' },
+      { label: '맞춤 이력서 생성', value: '1개' },
+    ],
+    starter: [
+      { label: '채팅 공고 분석', value: '30개' },
+      { label: '공고 저장', value: '30개' },
+      { label: 'AI 적합도 평가', value: '20개' },
+      { label: '맞춤 이력서 생성', value: '10개' },
+    ],
+    pro: [
+      { label: '채팅 공고 분석', value: '무제한' },
+      { label: '공고 저장', value: '무제한' },
+      { label: 'AI 적합도 평가', value: '50개' },
+      { label: '맞춤 이력서 생성', value: '30개' },
+    ],
+  };
+
+  const planPrices = {
+    free: { price: 0, label: '무료' },
+    starter: { price: 9900, label: '₩9,900' },
+    pro: { price: 19900, label: '₩19,900' },
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -31,43 +54,53 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
         <SheetHeader className="text-left pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-primary" />
-            요금제
+            요금제 안내
           </SheetTitle>
         </SheetHeader>
 
-        {/* Current Plan Status */}
+        {/* Current Usage Status */}
         <div className="p-4 rounded-xl bg-secondary/50 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">현재 요금제</span>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium">현재 요금제</span>
             <Badge variant="secondary" className="font-medium">
               {subscription?.planDisplayName || 'Free'}
             </Badge>
           </div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">맞춤 이력서 생성</span>
-            <span className="text-sm font-medium">
-              {isFreePlan 
-                ? `${resumeCreditsUsed}/${totalResumeCredits > 0 ? totalResumeCredits : 0}개 사용` 
-                : `${resumeCreditsRemaining}개 남음`}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">AI 크레딧</span>
-            <span className="text-sm font-medium">
-              {subscription?.aiCreditsRemaining ?? 0}개 남음
-            </span>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">공고 저장</span>
+              <span className="font-medium">
+                {currentJobCount} / {subscription?.jobLimit === 999999 ? '무제한' : subscription?.jobLimit || 5}개
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">AI 적합도 평가</span>
+              <span className="font-medium">
+                {subscription?.aiCreditsRemaining ?? 0}개 남음
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">맞춤 이력서 생성</span>
+              <span className="font-medium">
+                {subscription?.resumeCreditsRemaining ?? 0}개 남음
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Plans */}
         <div className="space-y-4">
-          {plans.map((plan) => {
-            const isCurrentPlan = subscription?.planId === plan.id;
-            const isPro = plan.name === 'pro';
-            
+          {(['free', 'starter', 'pro'] as const).map((planKey) => {
+            const plan = plans.find(p => p.name === planKey);
+            const isCurrentPlan = subscription?.planName === planKey;
+            const isPro = planKey === 'pro';
+            const features = planFeatures[planKey];
+            const priceInfo = planPrices[planKey];
+
             return (
               <div
-                key={plan.id}
+                key={planKey}
                 className={cn(
                   "relative p-4 rounded-xl border-2 transition-all",
                   isCurrentPlan 
@@ -87,10 +120,10 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
                 
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold">{plan.displayName}</h3>
+                    <h3 className="font-semibold capitalize">{planKey}</h3>
                     <p className="text-2xl font-bold">
-                      {plan.price === 0 ? '무료' : `₩${plan.price.toLocaleString()}`}
-                      {plan.price > 0 && <span className="text-sm font-normal text-muted-foreground">/월</span>}
+                      {priceInfo.label}
+                      {priceInfo.price > 0 && <span className="text-sm font-normal text-muted-foreground">/월</span>}
                     </p>
                   </div>
                   {isCurrentPlan && (
@@ -101,24 +134,21 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
                 </div>
 
                 <ul className="space-y-2 mb-4">
-                  <li className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span>맞춤 이력서 {plan.resumeCredits >= 999999 ? '무제한' : `${plan.resumeCredits}개`}</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span>공고 저장 {plan.jobLimit}개</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span>AI 크레딧 {plan.aiCredits}개/월</span>
-                  </li>
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                      <span>{feature}</span>
+                  {features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                        {feature.label}
+                      </span>
+                      <span className="font-medium text-muted-foreground">{feature.value}</span>
                     </li>
                   ))}
+                  {planKey !== 'free' && (
+                    <li className="flex items-center gap-2 text-sm pt-1">
+                      <ShieldCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span>전화번호 인증 필수</span>
+                    </li>
+                  )}
                 </ul>
 
                 {!isCurrentPlan && (
@@ -127,7 +157,7 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
                     variant={isPro ? "default" : "outline"}
                     disabled
                   >
-                    {plan.price > (subscription?.planId ? plans.find(p => p.id === subscription.planId)?.price ?? 0 : 0) 
+                    {priceInfo.price > (planPrices[subscription?.planName as keyof typeof planPrices]?.price ?? 0)
                       ? '업그레이드 (준비중)' 
                       : '선택하기 (준비중)'}
                   </Button>
@@ -137,9 +167,14 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
           })}
         </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-6">
-          결제 기능은 곧 출시됩니다. 현재는 무료 플랜을 이용해주세요.
-        </p>
+        <div className="mt-6 space-y-2">
+          <p className="text-xs text-muted-foreground text-center">
+            결제 기능은 곧 출시됩니다. 현재는 무료 플랜을 이용해주세요.
+          </p>
+          <p className="text-xs text-muted-foreground text-center">
+            AI 기능 사용 시 전화번호 인증이 필요하며, 무료 악용 방지 목적으로만 사용됩니다.
+          </p>
+        </div>
       </SheetContent>
     </Sheet>
   );
