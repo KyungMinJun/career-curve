@@ -6,6 +6,108 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Allowlisted job board domains for URL validation
+const ALLOWED_DOMAINS = [
+  'linkedin.com',
+  'indeed.com',
+  'glassdoor.com',
+  'jobkorea.co.kr',
+  'saramin.co.kr',
+  'wanted.co.kr',
+  'rocketpunch.com',
+  'jumpit.co.kr',
+  'programmers.co.kr',
+  'catch.co.kr',
+  'incruit.com',
+  'worknet.go.kr',
+  'albamon.com',
+  'alba.co.kr',
+  'job.go.kr',
+  'career.co.kr',
+  'jobs.lever.co',
+  'boards.greenhouse.io',
+  'jobs.ashbyhq.com',
+  'apply.workable.com',
+  'jobs.smartrecruiters.com',
+  'recruiting.paylocity.com',
+  'monster.com',
+  'ziprecruiter.com',
+  'careerbuilder.com',
+  'dice.com',
+  'simplyhired.com',
+  'flexjobs.com',
+  'angel.co',
+  'wellfound.com',
+  'remoteok.com',
+  'weworkremotely.com',
+  'stackoverflow.jobs',
+  'hired.com',
+  'triplebyte.com',
+];
+
+/**
+ * Validates a URL to prevent SSRF attacks
+ * - Only allows HTTPS/HTTP protocols
+ * - Blocks private IP ranges and localhost
+ * - Checks against allowlisted job board domains
+ */
+function validateUrl(urlString: string): { valid: boolean; error?: string; url?: string } {
+  try {
+    // Add protocol if missing
+    const formattedUrl = urlString.trim().startsWith('http') 
+      ? urlString.trim() 
+      : `https://${urlString.trim()}`;
+    
+    const parsed = new URL(formattedUrl);
+    
+    // Only allow HTTP/HTTPS protocols
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+      return { valid: false, error: '지원되지 않는 URL 형식입니다.' };
+    }
+    
+    const hostname = parsed.hostname.toLowerCase();
+    
+    // Block localhost
+    if (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname)) {
+      return { valid: false, error: '유효하지 않은 URL입니다.' };
+    }
+    
+    // Block private IP ranges
+    if (
+      hostname.match(/^10\./i) ||
+      hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./i) ||
+      hostname.match(/^192\.168\./i) ||
+      hostname.match(/^169\.254\./i) || // link-local (AWS metadata)
+      hostname.match(/^fe80:/i) || // IPv6 link-local
+      hostname.match(/^fc00:/i) || // IPv6 unique local
+      hostname.match(/^fd[0-9a-f]{2}:/i) // IPv6 unique local
+    ) {
+      return { valid: false, error: '유효하지 않은 URL입니다.' };
+    }
+    
+    // Check if domain is in allowlist
+    const isAllowed = ALLOWED_DOMAINS.some(allowed => 
+      hostname === allowed || hostname.endsWith('.' + allowed)
+    );
+    
+    if (!isAllowed) {
+      return { 
+        valid: false, 
+        error: '지원되지 않는 사이트입니다. LinkedIn, 잡코리아, 사람인, 원티드 등 주요 채용 사이트의 URL을 입력해주세요.' 
+      };
+    }
+    
+    // URL length check
+    if (formattedUrl.length > 2000) {
+      return { valid: false, error: 'URL이 너무 깁니다.' };
+    }
+    
+    return { valid: true, url: formattedUrl };
+  } catch {
+    return { valid: false, error: '올바른 URL 형식이 아닙니다.' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -47,6 +149,18 @@ serve(async (req) => {
       );
     }
 
+    // Validate URL to prevent SSRF attacks
+    const urlValidation = validateUrl(url);
+    if (!urlValidation.valid) {
+      console.log('URL validation failed:', url, urlValidation.error);
+      return new Response(
+        JSON.stringify({ success: false, error: urlValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const formattedUrl = urlValidation.url!;
+
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
@@ -66,9 +180,7 @@ serve(async (req) => {
       );
     }
 
-    // Step 1: Scrape the job posting URL
-    const formattedUrl = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
-    console.log('Scraping URL:', formattedUrl);
+    console.log('Scraping validated URL:', formattedUrl);
     
     let pageContent = '';
     let pageTitle = '';
@@ -79,14 +191,19 @@ serve(async (req) => {
     if (isLinkedIn) {
       // For LinkedIn, try direct fetch with browser-like headers
       console.log('LinkedIn detected, using direct fetch');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      
       try {
         const directResponse = await fetch(formattedUrl, {
+          signal: controller.signal,
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
           },
         });
+        clearTimeout(timeoutId);
         
         if (directResponse.ok) {
           const html = await directResponse.text();
