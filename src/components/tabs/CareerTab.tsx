@@ -1116,7 +1116,7 @@ function ExperienceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90%] rounded-2xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[90%] rounded-2xl lg:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {experience
