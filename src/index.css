@@ -145,6 +145,35 @@
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+
+  /* iOS overscroll prevention */
+  html,
+  body {
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Allow text selection on interactive elements */
+  input,
+  textarea,
+  [role="button"],
+  button,
+  a {
+    -webkit-user-select: text;
+  }
+
+  /* Momentum scrolling for iOS */
+  .scrollable {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent viewport zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 @layer utilities {
@@ -170,12 +199,12 @@
   /* Subtle card shadow */
   .card-shadow {
     box-shadow: 0 1px 3px 0 hsl(var(--foreground) / 0.04),
-                0 1px 2px -1px hsl(var(--foreground) / 0.04);
+      0 1px 2px -1px hsl(var(--foreground) / 0.04);
   }
 
   /* Elevated card shadow */
   .card-shadow-lg {
     box-shadow: 0 4px 6px -1px hsl(var(--foreground) / 0.05),
-                0 2px 4px -2px hsl(var(--foreground) / 0.05);
+      0 2px 4px -2px hsl(var(--foreground) / 0.05);
   }
 }
