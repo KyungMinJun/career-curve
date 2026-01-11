@@ -300,13 +300,17 @@ export function TableView({ jobs }: TableViewProps) {
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed min-w-[800px]">
+          <table className="w-full table-fixed min-w-[640px] sm:min-w-[768px] lg:min-w-0 lg:table-fixed">
             <thead>
               <tr className="bg-secondary/50 border-b border-border">
                 {visibleColumns.map((col) => (
-                  <th 
-                    key={col.key} 
-                    className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  <th
+                    key={col.key}
+                    className={cn(
+                      "px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide",
+                      (col.key === 'location' || col.key === 'visaSponsorship') && 'hidden lg:table-cell',
+                      (col.key === 'position' || col.key === 'minExperience' || col.key === 'workType') && 'hidden md:table-cell'
+                    )}
                     style={{ width: col.key === 'title' ? '25%' : col.key === 'companyName' ? '15%' : '12%' }}
                   >
                     {col.label}
@@ -322,7 +326,14 @@ export function TableView({ jobs }: TableViewProps) {
                   onClick={() => setSelectedJobId(job.id)}
                 >
                   {visibleColumns.map((col) => (
-                    <td key={col.key} className="px-4 py-3">
+                    <td
+                      key={col.key}
+                      className={cn(
+                        "px-4 py-3",
+                        (col.key === 'location' || col.key === 'visaSponsorship') && 'hidden lg:table-cell',
+                        (col.key === 'position' || col.key === 'minExperience' || col.key === 'workType') && 'hidden md:table-cell'
+                      )}
+                    >
                       <div className="min-w-0 overflow-hidden">
                         {renderCell(job, col.key)}
                       </div>
