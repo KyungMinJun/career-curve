@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { BottomTabBar, TabId } from '@/components/layout/BottomTabBar';
+import { DesktopSidebar } from '@/components/layout/DesktopSidebar';
 import { ChatTab } from '@/components/tabs/ChatTab';
 import { BoardTab } from '@/components/tabs/BoardTab';
 import { CareerTab } from '@/components/tabs/CareerTab';
@@ -44,12 +45,17 @@ const Index = () => {
   };
 
   return (
-    <AppLayout>
-      <div className="h-screen flex flex-col">
-        {renderTab()}
+    <>
+      <DesktopSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="lg:ml-64">
+        <AppLayout>
+          <div className="h-screen flex flex-col">
+            {renderTab()}
+          </div>
+        </AppLayout>
       </div>
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-    </AppLayout>
+    </>
   );
 };
 
