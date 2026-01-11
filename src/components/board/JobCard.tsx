@@ -1,32 +1,38 @@
-import { useState } from 'react';
-import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from '@/types/job';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Star, MoreVertical, Trash2, Edit2 } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useState } from "react";
+import {
+  JobPosting,
+  JobStatus,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  PRIORITY_LABELS,
+} from "@/types/job";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Star, MoreVertical, Trash2, Edit2 } from "lucide-react";
+import { useData } from "@/contexts/DataContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface JobCardProps {
   job: JobPosting;
@@ -44,8 +50,8 @@ export function JobCard({ job, onClick }: JobCardProps) {
           <Star
             key={i}
             className={cn(
-              'w-3 h-3',
-              i <= score ? 'fill-primary text-primary' : 'text-muted'
+              "w-3 h-3",
+              i <= score ? "fill-primary text-primary" : "text-muted"
             )}
           />
         ))}
@@ -60,18 +66,26 @@ export function JobCard({ job, onClick }: JobCardProps) {
 
   const getPriorityColor = (priority: number) => {
     switch (priority) {
-      case 1: return 'text-primary bg-primary/10';
-      case 2: return 'text-success bg-success/10';
-      case 3: return 'text-warning bg-warning/10';
-      case 4: return 'text-muted-foreground bg-muted';
-      case 5: return 'text-muted-foreground bg-muted';
-      default: return 'text-muted-foreground bg-muted';
+      case 1:
+        return "text-primary bg-primary/10";
+      case 2:
+        return "text-success bg-success/10";
+      case 3:
+        return "text-warning bg-warning/10";
+      case 4:
+        return "text-muted-foreground bg-muted";
+      case 5:
+        return "text-muted-foreground bg-muted";
+      default:
+        return "text-muted-foreground bg-muted";
     }
   };
 
   // Check if evaluation is done (has company or fit scores)
-  const hasEvaluation = (job.companyScore && job.companyScore > 0) || (job.fitScore && job.fitScore > 0);
-  const displayPriority = hasEvaluation ? job.priority : '-';
+  const hasEvaluation =
+    (job.companyScore && job.companyScore > 0) ||
+    (job.fitScore && job.fitScore > 0);
+  const displayPriority = hasEvaluation ? job.priority : "-";
 
   return (
     <>
@@ -90,26 +104,34 @@ export function JobCard({ job, onClick }: JobCardProps) {
             </h3>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Badge className={cn('text-xs font-semibold', hasEvaluation ? getPriorityColor(job.priority) : 'text-muted-foreground bg-muted')}>
+            <Badge
+              className={cn(
+                "text-xs font-semibold",
+                hasEvaluation
+                  ? getPriorityColor(job.priority)
+                  : "text-muted-foreground bg-muted"
+              )}
+            >
               #{displayPriority}
             </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
+                <Button variant="ghost" size="icon" className="w-7 h-7">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setIsEditOpen(true); }}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditOpen(true);
+                  }}
+                >
                   <Edit2 className="w-4 h-4 mr-2" />
                   편집
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={handleDelete}
                   className="text-destructive focus:text-destructive"
                 >
@@ -128,14 +150,19 @@ export function JobCard({ job, onClick }: JobCardProps) {
           </Badge>
           {job.language && (
             <Badge variant="outline" className="text-[10px] shrink-0">
-              {job.language === 'ko' ? '🇰🇷 국문' : '🇺🇸 영문'}
+              {job.language === "ko" ? "🇰🇷 국문" : "🇺🇸 영문"}
             </Badge>
           )}
         </div>
 
         {/* Date added */}
         <p className="text-xs text-muted-foreground mb-2">
-          {new Date(job.createdAt).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })} 추가
+          {new Date(job.createdAt).toLocaleDateString("ko-KR", {
+            year: "2-digit",
+            month: "2-digit",
+            day: "2-digit",
+          })}{" "}
+          추가
         </p>
 
         {/* Footer */}
@@ -143,18 +170,11 @@ export function JobCard({ job, onClick }: JobCardProps) {
           <div className="flex items-center gap-2">
             {job.fitScore && renderStars(job.fitScore)}
           </div>
-          <Badge className={cn('text-xs shrink-0', STATUS_COLORS[job.status])}>
-            {STATUS_LABELS[job.status]}
-          </Badge>
         </div>
       </div>
 
       {/* Edit Dialog */}
-      <JobEditDialog 
-        job={job} 
-        open={isEditOpen} 
-        onOpenChange={setIsEditOpen}
-      />
+      <JobEditDialog job={job} open={isEditOpen} onOpenChange={setIsEditOpen} />
     </>
   );
 }
@@ -173,9 +193,9 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
     position: job.position,
     status: job.status,
     priority: job.priority,
-    minExperience: job.minExperience || '',
-    workType: job.workType || '',
-    location: job.location || '',
+    minExperience: job.minExperience || "",
+    workType: job.workType || "",
+    location: job.location || "",
   });
 
   const handleSave = () => {
@@ -185,18 +205,23 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90%] rounded-2xl" onClick={(e) => e.stopPropagation()}>
+      <DialogContent
+        className="max-w-[90%] rounded-2xl lg:max-w-2xl xl:max-w-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>공고 편집</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
             <Label htmlFor="companyName">회사명</Label>
             <Input
               id="companyName"
               value={formData.companyName}
-              onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, companyName: e.target.value })
+              }
             />
           </div>
 
@@ -205,7 +230,9 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
             <Input
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
             />
           </div>
 
@@ -214,7 +241,9 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
             <Input
               id="position"
               value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, position: e.target.value })
+              }
             />
           </div>
 
@@ -223,14 +252,18 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
               <Label>상태</Label>
               <Select
                 value={formData.status}
-                onValueChange={(v) => setFormData({ ...formData, status: v as JobStatus })}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, status: v as JobStatus })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -240,14 +273,18 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
               <Label>우선순위</Label>
               <Select
                 value={formData.priority.toString()}
-                onValueChange={(v) => setFormData({ ...formData, priority: parseInt(v) })}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, priority: parseInt(v) })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4, 5].map((p) => (
-                    <SelectItem key={p} value={p.toString()}>#{p} {PRIORITY_LABELS[p]}</SelectItem>
+                    <SelectItem key={p} value={p.toString()}>
+                      #{p} {PRIORITY_LABELS[p]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -260,7 +297,9 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
               <Input
                 id="minExperience"
                 value={formData.minExperience}
-                onChange={(e) => setFormData({ ...formData, minExperience: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, minExperience: e.target.value })
+                }
                 placeholder="예: 3년 이상"
               />
             </div>
@@ -269,7 +308,9 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
               <Input
                 id="workType"
                 value={formData.workType}
-                onChange={(e) => setFormData({ ...formData, workType: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, workType: e.target.value })
+                }
                 placeholder="예: 재택"
               />
             </div>
@@ -280,13 +321,19 @@ function JobEditDialog({ job, open, onOpenChange }: JobEditDialogProps) {
             <Input
               id="location"
               value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, location: e.target.value })
+              }
               placeholder="예: 서울 강남"
             />
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => onOpenChange(false)}
+            >
               취소
             </Button>
             <Button className="flex-1" onClick={handleSave}>
