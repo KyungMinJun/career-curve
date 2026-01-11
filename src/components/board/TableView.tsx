@@ -1,18 +1,24 @@
-import { useState } from 'react';
-import { JobPosting, JobStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from '@/types/job';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useData } from '@/contexts/DataContext';
-import { JobDetailDialog } from './JobDetailDialog';
+import { useState } from "react";
+import {
+  JobPosting,
+  JobStatus,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  PRIORITY_LABELS,
+} from "@/types/job";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useData } from "@/contexts/DataContext";
+import { JobDetailDialog } from "./JobDetailDialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,79 +27,82 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import { 
-  Filter, 
-  ArrowUpDown, 
-  Settings2, 
-  Star 
-} from 'lucide-react';
+} from "@/components/ui/dropdown-menu";
+import { Filter, ArrowUpDown, Settings2, Star } from "lucide-react";
 
 interface TableViewProps {
   jobs: JobPosting[];
 }
 
-type SortKey = 'priority' | 'createdAt' | 'companyName' | 'title';
-type SortDirection = 'asc' | 'desc';
+type SortKey = "priority" | "createdAt" | "companyName" | "title";
+type SortDirection = "asc" | "desc";
 
 const DEFAULT_COLUMNS = [
-  { key: 'title', label: '공고명', visible: true },
-  { key: 'companyName', label: '회사', visible: true },
-  { key: 'status', label: '상태', visible: true },
-  { key: 'priority', label: '우선순위', visible: true },
-  { key: 'position', label: '포지션', visible: true },
-  { key: 'minExperience', label: '최소경력', visible: true },
-  { key: 'workType', label: '근무형태', visible: true },
-  { key: 'location', label: '위치', visible: true },
-  { key: 'visaSponsorship', label: '비자', visible: false },
+  { key: "title", label: "공고명", visible: true },
+  { key: "companyName", label: "회사", visible: true },
+  { key: "status", label: "상태", visible: true },
+  { key: "priority", label: "우선순위", visible: true },
+  { key: "position", label: "포지션", visible: true },
+  { key: "minExperience", label: "최소경력", visible: true },
+  { key: "workType", label: "근무형태", visible: true },
+  { key: "location", label: "위치", visible: true },
+  { key: "visaSponsorship", label: "비자", visible: false },
 ];
 
 export function TableView({ jobs }: TableViewProps) {
   const { updateJobPosting, jobPostings } = useData();
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
-  const [sortKey, setSortKey] = useState<SortKey>('priority');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
-  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("priority");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
+  const [editingCell, setEditingCell] = useState<{
+    id: string;
+    field: string;
+  } | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  const selectedJob = selectedJobId ? jobPostings.find((j) => j.id === selectedJobId) ?? null : null;
+  const selectedJob = selectedJobId
+    ? jobPostings.find((j) => j.id === selectedJobId) ?? null
+    : null;
 
   const filteredJobs = jobs
-    .filter((job) => statusFilter === 'all' || job.status === statusFilter)
+    .filter((job) => statusFilter === "all" || job.status === statusFilter)
     .sort((a, b) => {
       let comparison = 0;
       switch (sortKey) {
-        case 'priority':
+        case "priority":
           comparison = a.priority - b.priority;
           break;
-        case 'createdAt':
-          comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "createdAt":
+          comparison =
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
           break;
-        case 'companyName':
+        case "companyName":
           comparison = a.companyName.localeCompare(b.companyName);
           break;
-        case 'title':
+        case "title":
           comparison = a.title.localeCompare(b.title);
           break;
       }
-      return sortDirection === 'asc' ? comparison : -comparison;
+      return sortDirection === "asc" ? comparison : -comparison;
     });
 
   const visibleColumns = columns.filter((col) => col.visible);
 
   const toggleColumn = (key: string) => {
-    setColumns(columns.map((col) => 
-      col.key === key ? { ...col, visible: !col.visible } : col
-    ));
+    setColumns(
+      columns.map((col) =>
+        col.key === key ? { ...col, visible: !col.visible } : col
+      )
+    );
   };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortKey(key);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
@@ -103,17 +112,20 @@ export function TableView({ jobs }: TableViewProps) {
   };
 
   const renderCell = (job: JobPosting, columnKey: string) => {
-    const isEditing = editingCell?.id === job.id && editingCell?.field === columnKey;
+    const isEditing =
+      editingCell?.id === job.id && editingCell?.field === columnKey;
     const value = job[columnKey as keyof JobPosting];
 
-    if (columnKey === 'status') {
+    if (columnKey === "status") {
       return (
         <Select
           value={job.status}
-          onValueChange={(v) => updateJobPosting(job.id, { status: v as JobStatus })}
+          onValueChange={(v) =>
+            updateJobPosting(job.id, { status: v as JobStatus })
+          }
         >
           <SelectTrigger className="h-7 w-24 text-xs border-none bg-transparent p-0">
-            <Badge className={cn('text-[10px]', STATUS_COLORS[job.status])}>
+            <Badge className={cn("text-[10px]", STATUS_COLORS[job.status])}>
               {STATUS_LABELS[job.status]}
             </Badge>
           </SelectTrigger>
@@ -128,23 +140,29 @@ export function TableView({ jobs }: TableViewProps) {
       );
     }
 
-    if (columnKey === 'priority') {
+    if (columnKey === "priority") {
       return (
         <Select
           value={job.priority.toString()}
-          onValueChange={(v) => updateJobPosting(job.id, { priority: parseInt(v) })}
+          onValueChange={(v) =>
+            updateJobPosting(job.id, { priority: parseInt(v) })
+          }
         >
           <SelectTrigger className="h-7 w-20 text-xs border-none bg-transparent p-0">
             <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold text-primary">#{job.priority}</span>
+              <span className="text-xs font-semibold text-primary">
+                #{job.priority}
+              </span>
               {job.fitScore && (
                 <div className="flex">
                   {[1, 2, 3, 4, 5].map((i) => (
                     <Star
                       key={i}
                       className={cn(
-                        'w-3 h-3',
-                        i <= job.fitScore! ? 'fill-primary text-primary' : 'text-muted'
+                        "w-3 h-3",
+                        i <= job.fitScore!
+                          ? "fill-primary text-primary"
+                          : "text-muted"
                       )}
                     />
                   ))}
@@ -163,37 +181,44 @@ export function TableView({ jobs }: TableViewProps) {
       );
     }
 
-    if (columnKey === 'visaSponsorship') {
+    if (columnKey === "visaSponsorship") {
       const visaValue = job.visaSponsorship;
       return (
-        <Badge 
-          variant="outline" 
+        <Badge
+          variant="outline"
           className={cn(
-            'text-[10px]',
-            visaValue === undefined && 'text-warning border-warning',
-            visaValue === true && 'text-success border-success',
-            visaValue === false && 'text-muted-foreground'
+            "text-[10px]",
+            visaValue === undefined && "text-warning border-warning",
+            visaValue === true && "text-success border-success",
+            visaValue === false && "text-muted-foreground"
           )}
         >
-          {visaValue === undefined ? '미확인' : visaValue ? '가능' : '불가'}
+          {visaValue === undefined ? "미확인" : visaValue ? "가능" : "불가"}
         </Badge>
       );
     }
 
-    const editableFields = ['title', 'companyName', 'position', 'minExperience', 'workType', 'location'];
+    const editableFields = [
+      "title",
+      "companyName",
+      "position",
+      "minExperience",
+      "workType",
+      "location",
+    ];
     if (editableFields.includes(columnKey)) {
       if (isEditing) {
         return (
           <Input
-            defaultValue={String(value || '')}
+            defaultValue={String(value || "")}
             className="h-7 text-xs"
             autoFocus
             onBlur={(e) => handleCellEdit(job.id, columnKey, e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 handleCellEdit(job.id, columnKey, e.currentTarget.value);
               }
-              if (e.key === 'Escape') {
+              if (e.key === "Escape") {
                 setEditingCell(null);
               }
             }}
@@ -202,37 +227,37 @@ export function TableView({ jobs }: TableViewProps) {
         );
       }
 
-      const displayValue = String(value || '');
+      const displayValue = String(value || "");
       const isUnconfirmed = !value;
 
       return (
         <span
           className={cn(
-            'text-sm cursor-text hover:bg-secondary/50 px-1 py-0.5 rounded truncate block',
-            isUnconfirmed && 'text-warning italic'
+            "text-sm cursor-text hover:bg-secondary/50 px-1 py-0.5 rounded truncate block",
+            isUnconfirmed && "text-warning italic"
           )}
           onClick={(e) => {
             e.stopPropagation();
             setEditingCell({ id: job.id, field: columnKey });
           }}
         >
-          {displayValue || '미확인'}
+          {displayValue || "미확인"}
         </span>
       );
     }
 
-    return <span className="text-sm truncate">{String(value || '-')}</span>;
+    return <span className="text-sm truncate">{String(value || "-")}</span>;
   };
 
   return (
-    <div className="h-full px-4 space-y-3">
+    <div className="h-full px-8 space-y-3">
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
               <Filter className="w-3.5 h-3.5 mr-1.5" />
               필터
-              {statusFilter !== 'all' && (
+              {statusFilter !== "all" && (
                 <Badge variant="secondary" className="ml-1.5 text-[10px]">
                   {STATUS_LABELS[statusFilter]}
                 </Badge>
@@ -242,11 +267,14 @@ export function TableView({ jobs }: TableViewProps) {
           <DropdownMenuContent align="start">
             <DropdownMenuLabel>상태 필터</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+            <DropdownMenuItem onClick={() => setStatusFilter("all")}>
               전체
             </DropdownMenuItem>
             {Object.entries(STATUS_LABELS).map(([key, label]) => (
-              <DropdownMenuItem key={key} onClick={() => setStatusFilter(key as JobStatus)}>
+              <DropdownMenuItem
+                key={key}
+                onClick={() => setStatusFilter(key as JobStatus)}
+              >
                 {label}
               </DropdownMenuItem>
             ))}
@@ -263,13 +291,13 @@ export function TableView({ jobs }: TableViewProps) {
           <DropdownMenuContent align="start">
             <DropdownMenuLabel>정렬 기준</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleSort('priority')}>
+            <DropdownMenuItem onClick={() => handleSort("priority")}>
               추천순 (우선순위)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSort('createdAt')}>
+            <DropdownMenuItem onClick={() => handleSort("createdAt")}>
               최근 추가순
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSort('companyName')}>
+            <DropdownMenuItem onClick={() => handleSort("companyName")}>
               회사명
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -300,7 +328,7 @@ export function TableView({ jobs }: TableViewProps) {
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed min-w-[640px] sm:min-w-[768px] lg:min-w-0 lg:table-fixed">
+          <table className="w-full">
             <thead>
               <tr className="bg-secondary/50 border-b border-border">
                 {visibleColumns.map((col) => (
@@ -308,10 +336,22 @@ export function TableView({ jobs }: TableViewProps) {
                     key={col.key}
                     className={cn(
                       "px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide",
-                      (col.key === 'location' || col.key === 'visaSponsorship') && 'hidden lg:table-cell',
-                      (col.key === 'position' || col.key === 'minExperience' || col.key === 'workType') && 'hidden md:table-cell'
+                      (col.key === "location" ||
+                        col.key === "visaSponsorship") &&
+                        "table-cell",
+                      (col.key === "position" ||
+                        col.key === "minExperience" ||
+                        col.key === "workType") &&
+                        "table-cell"
                     )}
-                    style={{ width: col.key === 'title' ? '25%' : col.key === 'companyName' ? '15%' : '12%' }}
+                    style={{
+                      width:
+                        col.key === "title"
+                          ? "25%"
+                          : col.key === "companyName"
+                          ? "15%"
+                          : "12%",
+                    }}
                   >
                     {col.label}
                   </th>
@@ -330,8 +370,13 @@ export function TableView({ jobs }: TableViewProps) {
                       key={col.key}
                       className={cn(
                         "px-4 py-3",
-                        (col.key === 'location' || col.key === 'visaSponsorship') && 'hidden lg:table-cell',
-                        (col.key === 'position' || col.key === 'minExperience' || col.key === 'workType') && 'hidden md:table-cell'
+                        (col.key === "location" ||
+                          col.key === "visaSponsorship") &&
+                          "table-cell",
+                        (col.key === "position" ||
+                          col.key === "minExperience" ||
+                          col.key === "workType") &&
+                          "table-cell"
                       )}
                     >
                       <div className="min-w-0 overflow-hidden">
@@ -343,7 +388,10 @@ export function TableView({ jobs }: TableViewProps) {
               ))}
               {filteredJobs.length === 0 && (
                 <tr>
-                  <td colSpan={visibleColumns.length} className="text-center py-8 text-sm text-muted-foreground">
+                  <td
+                    colSpan={visibleColumns.length}
+                    className="text-center py-8 text-sm text-muted-foreground"
+                  >
                     표시할 공고가 없습니다
                   </td>
                 </tr>
@@ -353,7 +401,7 @@ export function TableView({ jobs }: TableViewProps) {
         </div>
       </div>
 
-       {selectedJob && (
+      {selectedJob && (
         <JobDetailDialog
           job={selectedJob}
           open={!!selectedJob}
