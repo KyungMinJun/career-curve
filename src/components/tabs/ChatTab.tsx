@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useData } from '@/contexts/DataContext';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import logoImage from '@/assets/logo.png';
+import { useState, useRef, useEffect } from "react";
+import { Send, Loader2, ExternalLink, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useData } from "@/contexts/DataContext";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { PageHeader } from "@/components/layout/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,21 +15,39 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 
 interface ChatTabProps {
   onNavigateToBoard: () => void;
 }
 
-const JOB_URL_KEYWORDS = ['career', 'careers', 'job', 'jobs', 'recruit', 'recruiting', 'hire', 'hiring', 'position', 'vacancy', 'opening', 'apply', 'talent', 'greenhouse', 'lever', 'workable', 'ashbyhq'];
+const JOB_URL_KEYWORDS = [
+  "career",
+  "careers",
+  "job",
+  "jobs",
+  "recruit",
+  "recruiting",
+  "hire",
+  "hiring",
+  "position",
+  "vacancy",
+  "opening",
+  "apply",
+  "talent",
+  "greenhouse",
+  "lever",
+  "workable",
+  "ashbyhq",
+];
 
 function isLikelyJobUrl(url: string): boolean {
   const lowerUrl = url.toLowerCase();
-  return JOB_URL_KEYWORDS.some(keyword => lowerUrl.includes(keyword));
+  return JOB_URL_KEYWORDS.some((keyword) => lowerUrl.includes(keyword));
 }
 
 export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [noContentDialogOpen, setNoContentDialogOpen] = useState(false);
@@ -37,7 +55,16 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { messages, addMessage, updateMessage, addJobPosting, jobPostings, canAddJob, subscription, hasAiCredits } = useData();
+  const {
+    messages,
+    addMessage,
+    updateMessage,
+    addJobPosting,
+    jobPostings,
+    canAddJob,
+    subscription,
+    hasAiCredits,
+  } = useData();
 
   const isAtJobLimit = !canAddJob(jobPostings.length);
   const hasAnalysisCredits = hasAiCredits();
@@ -48,7 +75,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -60,22 +87,24 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       new URL(text);
       return true;
     } catch {
-      return text.match(/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i);
+      return text.match(
+        /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i
+      );
     }
   };
 
   const analyzeJobUrl = async (url: string): Promise<any> => {
-    const { data, error } = await supabase.functions.invoke('analyze-job', {
-      body: { url }
+    const { data, error } = await supabase.functions.invoke("analyze-job", {
+      body: { url },
     });
 
     if (error) {
-      console.error('Edge function error:', error);
-      throw new Error(error.message || 'Failed to analyze job posting');
+      console.error("Edge function error:", error);
+      throw new Error(error.message || "Failed to analyze job posting");
     }
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to analyze job posting');
+      throw new Error(data.error || "Failed to analyze job posting");
     }
 
     return data.data;
@@ -84,7 +113,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const processJobUrl = async (url: string) => {
     // Check AI analysis credits first (UI-only check, actual deduction happens server-side)
     if (!hasAnalysisCredits) {
-      toast.error('AI 분석 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
+      toast.error("AI 분석 크레딧이 부족합니다. 요금제를 업그레이드해주세요.");
       return;
     }
 
@@ -92,36 +121,40 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
 
     // Add processing message
     const processingMsgId = await addMessage({
-      type: 'assistant',
-      content: '공고를 정리하고 있어요…',
+      type: "assistant",
+      content: "공고를 정리하고 있어요…",
       isProcessing: true,
       createdAt: new Date(),
     });
 
     if (!processingMsgId) {
-      toast.error('메시지 추가 중 오류가 발생했습니다');
+      toast.error("메시지 추가 중 오류가 발생했습니다");
       return;
     }
 
     try {
       // Call the edge function to analyze the job posting
       const jobData = await analyzeJobUrl(url);
-      
+
       // Create job posting from analyzed data, including detected language
       const newJobId = await addJobPosting({
-        companyName: jobData.companyName || '회사명 확인 필요',
-        title: jobData.title || '채용 공고',
-        status: 'reviewing',
+        companyName: jobData.companyName || "회사명 확인 필요",
+        title: jobData.title || "채용 공고",
+        status: "reviewing",
         priority: 0,
-        position: jobData.position || '미정',
-        language: jobData.language || 'ko', // Store detected language
+        position: jobData.position || "미정",
+        language: jobData.language || "ko", // Store detected language
         minExperience: jobData.minExperience,
         workType: jobData.workType,
         location: jobData.location,
         visaSponsorship: jobData.visaSponsorship,
-        summary: jobData.summary || '공고 내용을 확인해주세요.',
-        companyScore: typeof jobData.companyScore === 'number' ? jobData.companyScore : undefined,
-        fitScore: typeof jobData.fitScore === 'number' ? jobData.fitScore : undefined,
+        summary: jobData.summary || "공고 내용을 확인해주세요.",
+        companyScore:
+          typeof jobData.companyScore === "number"
+            ? jobData.companyScore
+            : undefined,
+        fitScore:
+          typeof jobData.fitScore === "number" ? jobData.fitScore : undefined,
         keyCompetencies: jobData.keyCompetencies || [],
         sourceUrl: url,
         createdAt: new Date(),
@@ -135,29 +168,32 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
         jobPostingId: newJobId,
       });
 
-      toast.success('공고가 분석되어 보드에 추가되었습니다');
-
+      toast.success("공고가 분석되어 보드에 추가되었습니다");
     } catch (error: any) {
-      console.error('Error analyzing job:', error);
-      
+      console.error("Error analyzing job:", error);
+
       // Check if this is a "no content" error
-      if (error?.message?.includes('추출할 수 없습니다') || error?.message?.includes('noContent')) {
+      if (
+        error?.message?.includes("추출할 수 없습니다") ||
+        error?.message?.includes("noContent")
+      ) {
         setPendingUrl(url);
         setNoContentDialogOpen(true);
         updateMessage(processingMsgId, {
-          content: '공고 내용을 가져올 수 없습니다.',
+          content: "공고 내용을 가져올 수 없습니다.",
           isProcessing: false,
         });
         return;
       }
-      
+
       // Update to error message
       updateMessage(processingMsgId, {
-        content: '❌ 공고 분석에 실패했습니다. 링크를 확인하거나 공고 내용을 직접 붙여넣어 주세요.',
+        content:
+          "❌ 공고 분석에 실패했습니다. 링크를 확인하거나 공고 내용을 직접 붙여넣어 주세요.",
         isProcessing: false,
       });
 
-      toast.error(error instanceof Error ? error.message : '공고 분석 실패');
+      toast.error(error instanceof Error ? error.message : "공고 분석 실패");
     }
   };
 
@@ -166,14 +202,14 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     if (!inputValue.trim()) return;
 
     await addMessage({
-      type: 'user' as const,
+      type: "user" as const,
       content: inputValue,
       createdAt: new Date(),
     });
 
     const isLink = isUrl(inputValue.trim());
     const urlToAnalyze = inputValue.trim();
-    setInputValue('');
+    setInputValue("");
 
     if (isLink) {
       // Check job limit first
@@ -203,8 +239,9 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       // Regular text message
       setTimeout(async () => {
         await addMessage({
-          type: 'assistant',
-          content: '공고 링크를 붙여넣으시면 자동으로 분석해서 보드에 정리해드릴게요.',
+          type: "assistant",
+          content:
+            "공고 링크를 붙여넣으시면 자동으로 분석해서 보드에 정리해드릴게요.",
           createdAt: new Date(),
         });
       }, 500);
@@ -222,8 +259,8 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const handleCancelJobUrl = async () => {
     setConfirmDialogOpen(false);
     await addMessage({
-      type: 'assistant',
-      content: '취소되었습니다. 채용 공고 링크를 붙여넣어 주세요.',
+      type: "assistant",
+      content: "취소되었습니다. 채용 공고 링크를 붙여넣어 주세요.",
       createdAt: new Date(),
     });
     setPendingUrl(null);
@@ -240,8 +277,8 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const handleDuplicateCancel = async () => {
     setDuplicateDialogOpen(false);
     await addMessage({
-      type: 'assistant',
-      content: '추가가 취소되었습니다.',
+      type: "assistant",
+      content: "추가가 취소되었습니다.",
       createdAt: new Date(),
     });
     setPendingUrl(null);
@@ -252,26 +289,26 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     if (pendingUrl) {
       // Add a minimal job posting with just the URL
       const newJobId = await addJobPosting({
-        companyName: '수동 입력 필요',
-        title: '공고 내용 확인 필요',
-        status: 'reviewing',
+        companyName: "수동 입력 필요",
+        title: "공고 내용 확인 필요",
+        status: "reviewing",
         priority: 0,
-        position: '미정',
-        summary: '공고 내용을 직접 확인하고 입력해주세요.',
+        position: "미정",
+        summary: "공고 내용을 직접 확인하고 입력해주세요.",
         keyCompetencies: [],
         sourceUrl: pendingUrl,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      
+
       await addMessage({
-        type: 'assistant',
-        content: '공고가 보드에 추가되었습니다. 공고 정보를 직접 입력해주세요.',
+        type: "assistant",
+        content: "공고가 보드에 추가되었습니다. 공고 정보를 직접 입력해주세요.",
         jobPostingId: newJobId,
         createdAt: new Date(),
       });
-      
-      toast.success('공고가 추가되었습니다. 정보를 직접 입력해주세요.');
+
+      toast.success("공고가 추가되었습니다. 정보를 직접 입력해주세요.");
       setPendingUrl(null);
     }
   };
@@ -279,8 +316,8 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   const handleNoContentCancel = async () => {
     setNoContentDialogOpen(false);
     await addMessage({
-      type: 'assistant',
-      content: '추가가 취소되었습니다.',
+      type: "assistant",
+      content: "추가가 취소되었습니다.",
       createdAt: new Date(),
     });
     setPendingUrl(null);
@@ -289,15 +326,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="px-4 pb-2 bg-background safe-top-lg shrink-0">
-        <div className="flex items-center gap-2">
-          <img src={logoImage} alt="Logo" className="w-6 h-6 object-contain" />
-          <h1 className="text-xl font-bold text-foreground">채팅</h1>
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          공고를 넣는 순간, 정리가 시작됩니다
-        </p>
-      </header>
+      <PageHeader title="채팅" subtitle="공고를 넣는 순간, 정리가 시작됩니다" />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 scrollbar-hide min-h-0">
@@ -305,16 +334,16 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
           <div
             key={message.id}
             className={cn(
-              'flex',
-              message.type === 'user' ? 'justify-end' : 'justify-start'
+              "flex",
+              message.type === "user" ? "justify-end" : "justify-start"
             )}
           >
             <div
               className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-2',
-                message.type === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card border border-border card-shadow'
+                "lg:max-w-[60%] max-w-[80%] rounded-2xl px-4 py-2",
+                message.type === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border border-border card-shadow"
               )}
             >
               <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
@@ -323,7 +352,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
                 )}
                 {message.content}
               </p>
-              
+
               {/* CTA for processed job posting */}
               {message.jobPostingId && !message.isProcessing && (
                 <Button
@@ -343,7 +372,10 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-4 pb-24 pt-2 border-t border-border bg-background shrink-0">
+      <form
+        onSubmit={handleSubmit}
+        className="px-4 pb-24 pt-2 border-t border-border bg-background shrink-0 lg:pb-2"
+      >
         <div className="flex gap-2 items-center">
           <input
             ref={inputRef}
@@ -373,18 +405,26 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
               공고가 아닌 링크일 수 있습니다
             </AlertDialogTitle>
             <AlertDialogDescription>
-              이 링크는 채용 공고가 아닌 것으로 보입니다. 계속 공고 등록을 진행하시겠습니까?
+              이 링크는 채용 공고가 아닌 것으로 보입니다. 계속 공고 등록을
+              진행하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelJobUrl}>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmJobUrl}>계속 진행</AlertDialogAction>
+            <AlertDialogCancel onClick={handleCancelJobUrl}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmJobUrl}>
+              계속 진행
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Duplicate URL Confirmation Dialog */}
-      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+      <AlertDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+      >
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -396,14 +436,21 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDuplicateCancel}>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDuplicateConfirm}>추가</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDuplicateCancel}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateConfirm}>
+              추가
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* No Content Confirmation Dialog */}
-      <AlertDialog open={noContentDialogOpen} onOpenChange={setNoContentDialogOpen}>
+      <AlertDialog
+        open={noContentDialogOpen}
+        onOpenChange={setNoContentDialogOpen}
+      >
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -411,12 +458,17 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
               공고 내용을 가져올 수 없습니다
             </AlertDialogTitle>
             <AlertDialogDescription>
-              해당 페이지가 마감되었거나 접근할 수 없는 상태입니다. 그래도 공고를 추가하고 직접 정보를 입력하시겠습니까?
+              해당 페이지가 마감되었거나 접근할 수 없는 상태입니다. 그래도
+              공고를 추가하고 직접 정보를 입력하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleNoContentCancel}>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleNoContentConfirm}>직접 입력하기</AlertDialogAction>
+            <AlertDialogCancel onClick={handleNoContentCancel}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleNoContentConfirm}>
+              직접 입력하기
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -430,16 +482,18 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
               공고 추가 한도 초과
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {subscription?.planName === 'free' 
+              {subscription?.planName === "free"
                 ? `무료 요금제는 공고 ${subscription.jobLimit}개까지 추가할 수 있습니다. 더 많은 공고를 관리하려면 유료 요금제로 업그레이드해주세요.`
-                : '공고 추가 한도에 도달했습니다. 요금제를 업그레이드해주세요.'}
+                : "공고 추가 한도에 도달했습니다. 요금제를 업그레이드해주세요."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setLimitDialogOpen(false);
-              setPendingUrl(null);
-            }}>
+            <AlertDialogCancel
+              onClick={() => {
+                setLimitDialogOpen(false);
+                setPendingUrl(null);
+              }}
+            >
               닫기
             </AlertDialogCancel>
           </AlertDialogFooter>
