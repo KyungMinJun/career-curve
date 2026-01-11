@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, KeyRound, UserCog, UserX, ChevronRight, Crown } from 'lucide-react';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+} from '@/components/ui/responsive-sheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -149,11 +149,11 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-w-md mx-auto">
-          <SheetHeader className="text-left pb-4">
-            <SheetTitle>계정</SheetTitle>
-          </SheetHeader>
+      <ResponsiveSheet open={open} onOpenChange={onOpenChange}>
+        <ResponsiveSheetContent className="rounded-t-2xl max-w-md mx-auto lg:max-w-2xl">
+          <ResponsiveSheetHeader className="text-left pb-4">
+            <ResponsiveSheetTitle>계정</ResponsiveSheetTitle>
+          </ResponsiveSheetHeader>
 
           <div className="space-y-1">
             {menuItems.map((item) => (
@@ -183,8 +183,8 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
               </button>
             ))}
           </div>
-        </SheetContent>
-      </Sheet>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

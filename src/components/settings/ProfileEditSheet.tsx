@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+} from '@/components/ui/responsive-sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,44 +75,46 @@ export function ProfileEditSheet({ open, onOpenChange }: ProfileEditSheetProps) 
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-w-md mx-auto h-[80vh]">
-        <SheetHeader className="text-left pb-4">
+    <ResponsiveSheet open={open} onOpenChange={onOpenChange}>
+      <ResponsiveSheetContent className="rounded-t-2xl max-w-md mx-auto h-[80vh] p-6 lg:max-w-2xl">
+        <ResponsiveSheetHeader className="text-left pb-4">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => onOpenChange(false)}>
               <ChevronLeft className="w-5 h-5" />
             </Button>
-            <SheetTitle>개인정보 변경</SheetTitle>
+            <ResponsiveSheetTitle>개인정보 변경</ResponsiveSheetTitle>
           </div>
-        </SheetHeader>
+        </ResponsiveSheetHeader>
 
         <div className="space-y-6 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="nameKo">이름 (국문)</Label>
-            <Input
-              id="nameKo"
-              value={nameKo}
-              onChange={(e) => setNameKo(e.target.value)}
-              placeholder="홍길동"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              국문 공고에 사용됩니다
-            </p>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nameKo">이름 (국문)</Label>
+              <Input
+                id="nameKo"
+                value={nameKo}
+                onChange={(e) => setNameKo(e.target.value)}
+                placeholder="홍길동"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                국문 공고에 사용됩니다
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="nameEn">이름 (영문)</Label>
-            <Input
-              id="nameEn"
-              value={nameEn}
-              onChange={(e) => setNameEn(e.target.value)}
-              placeholder="Gildong Hong"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              영문 공고에 사용됩니다
-            </p>
+            <div className="space-y-2">
+              <Label htmlFor="nameEn">이름 (영문)</Label>
+              <Input
+                id="nameEn"
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                placeholder="Gildong Hong"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                영문 공고에 사용됩니다
+              </p>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -133,7 +135,7 @@ export function ProfileEditSheet({ open, onOpenChange }: ProfileEditSheetProps) 
             {isLoading ? '저장 중...' : '저장'}
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </ResponsiveSheetContent>
+    </ResponsiveSheet>
   );
 }

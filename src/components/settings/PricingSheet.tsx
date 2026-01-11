@@ -1,10 +1,10 @@
 import { Check, Crown, Sparkles, ShieldCheck } from 'lucide-react';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+} from '@/components/ui/responsive-sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/contexts/DataContext';
@@ -49,14 +49,14 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-w-md mx-auto max-h-[85vh] overflow-y-auto">
-        <SheetHeader className="text-left pb-4">
-          <SheetTitle className="flex items-center gap-2">
+    <ResponsiveSheet open={open} onOpenChange={onOpenChange}>
+      <ResponsiveSheetContent className="rounded-t-2xl max-w-md mx-auto max-h-[85vh] overflow-y-auto lg:max-w-2xl">
+        <ResponsiveSheetHeader className="text-left pb-4">
+          <ResponsiveSheetTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-primary" />
             요금제 안내
-          </SheetTitle>
-        </SheetHeader>
+          </ResponsiveSheetTitle>
+        </ResponsiveSheetHeader>
 
         {/* Current Usage Status */}
         <div className="p-4 rounded-xl bg-secondary/50 mb-6">
@@ -175,7 +175,7 @@ export function PricingSheet({ open, onOpenChange }: PricingSheetProps) {
             AI 기능 사용 시 전화번호 인증이 필요하며, 무료 악용 방지 목적으로만 사용됩니다.
           </p>
         </div>
-      </SheetContent>
-    </Sheet>
+      </ResponsiveSheetContent>
+    </ResponsiveSheet>
   );
 }
