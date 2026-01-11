@@ -394,7 +394,7 @@ export function CareerTab() {
     <div className="flex flex-col h-full">
       <PageHeader title="경력" subtitle="이력서와 경험을 관리하세요" />
 
-      <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide max-w-3xl mx-auto">
+      <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide w-[90%] lg:w-[600px] mx-auto">
         {/* Resumes Section */}
         <Collapsible open={resumesOpen} onOpenChange={setResumesOpen}>
           <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
