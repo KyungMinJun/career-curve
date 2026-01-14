@@ -1,5 +1,14 @@
 import { useState, useMemo } from "react";
-import { LayoutGrid, Table2, Filter, ArrowUpDown, ArrowRight, Loader2, AlertCircle, Link } from "lucide-react";
+import {
+  LayoutGrid,
+  Table2,
+  Filter,
+  ArrowUpDown,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  Link,
+} from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -124,7 +133,15 @@ export function BoardTab() {
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 
-  const { jobPostings, currentGoals, updateJobPosting, addJobPosting, canAddJob, subscription, hasAiCredits } = useData();
+  const {
+    jobPostings,
+    currentGoals,
+    updateJobPosting,
+    addJobPosting,
+    canAddJob,
+    subscription,
+    hasAiCredits,
+  } = useData();
   const { user } = useAuth();
   const userName =
     user?.user_metadata?.name_ko ||
@@ -195,7 +212,9 @@ export function BoardTab() {
         updatedAt: new Date(),
       });
 
-      toast.success(`${jobData.companyName} - ${jobData.title} 공고가 추가되었습니다`);
+      toast.success(
+        `${jobData.companyName} - ${jobData.title} 공고가 추가되었습니다`
+      );
       setInputValue("");
     } catch (error: any) {
       console.error("Error analyzing job:", error);
@@ -597,8 +616,8 @@ export function BoardTab() {
         </div>
 
         {/* URL 입력 섹션 */}
-        <form onSubmit={handleSubmit} className="mb-4">
-          <div className="relative max-w-xl">
+        <form onSubmit={handleSubmit} className="pb-4 flex justify-center">
+          <div className="relative w-full max-w-xl">
             <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
