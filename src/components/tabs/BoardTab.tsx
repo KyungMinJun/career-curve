@@ -165,7 +165,7 @@ export function BoardTab() {
     });
 
     if (error) {
-      console.error("Edge function error:", error);
+      console.error("Edge function error:", error.message);
       throw new Error(error.message || "Failed to analyze job posting");
     }
 
@@ -215,7 +215,6 @@ export function BoardTab() {
       toast.success(
         `${jobData.companyName} - ${jobData.title} 공고가 추가되었습니다`
       );
-      setInputValue("");
     } catch (error: any) {
       console.error("Error analyzing job:", error);
 
@@ -230,6 +229,7 @@ export function BoardTab() {
       }
     } finally {
       setIsProcessing(false);
+      setInputValue("");
     }
   };
 
