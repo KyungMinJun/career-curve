@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LayoutGrid, Table2, Filter, ArrowUpDown } from "lucide-react";
+import { LayoutGrid, Table2, Filter, ArrowUpDown, ArrowRight, Loader2, AlertCircle, Link } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { TableView } from "@/components/board/TableView";
 import { JobStatus } from "@/types/job";
 import { cn } from "@/lib/utils";
 import { STATUS_ORDER } from "@/components/board/constants";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +20,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ViewMode = "kanban" | "table";
 type SortOption = "newest" | "oldest" | "priority" | "company";
@@ -48,6 +60,43 @@ const SORT_LABELS: Record<SortOption, string> = {
   company: "회사명순 (한글→영문)",
 };
 
+// URL 분석 관련 상수
+const JOB_URL_KEYWORDS = [
+  "career",
+  "careers",
+  "job",
+  "jobs",
+  "recruit",
+  "recruiting",
+  "hire",
+  "hiring",
+  "position",
+  "vacancy",
+  "opening",
+  "apply",
+  "talent",
+  "greenhouse",
+  "lever",
+  "workable",
+  "ashbyhq",
+];
+
+function isLikelyJobUrl(url: string): boolean {
+  const lowerUrl = url.toLowerCase();
+  return JOB_URL_KEYWORDS.some((keyword) => lowerUrl.includes(keyword));
+}
+
+function isUrl(text: string): boolean {
+  try {
+    new URL(text);
+    return true;
+  } catch {
+    return !!text.match(
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i
+    );
+  }
+}
+
 // Load filters from localStorage
 const loadSavedFilters = (): FilterState => {
   try {
@@ -65,7 +114,17 @@ export function BoardTab() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [sortOption, setSortOption] = useState<SortOption>("priority");
   const [filters, setFiltersState] = useState<FilterState>(loadSavedFilters);
-  const { jobPostings, currentGoals, updateJobPosting } = useData();
+
+  // URL 입력 관련 상태
+  const [inputValue, setInputValue] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [noContentDialogOpen, setNoContentDialogOpen] = useState(false);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+
+  const { jobPostings, currentGoals, updateJobPosting, addJobPosting, canAddJob, subscription, hasAiCredits } = useData();
   const { user } = useAuth();
   const userName =
     user?.user_metadata?.name_ko ||
@@ -73,6 +132,178 @@ export function BoardTab() {
     user?.email ||
     "사용자";
   const currentGoal = currentGoals[0] ?? null;
+
+  const isAtJobLimit = !canAddJob(jobPostings.length);
+  const hasAnalysisCredits = hasAiCredits();
+
+  // Check if URL was already shared
+  const findExistingJobByUrl = (url: string) => {
+    return jobPostings.find((job) => job.sourceUrl === url);
+  };
+
+  // Edge function 호출하여 공고 분석
+  const analyzeJobUrl = async (url: string): Promise<any> => {
+    const { data, error } = await supabase.functions.invoke("analyze-job", {
+      body: { url },
+    });
+
+    if (error) {
+      console.error("Edge function error:", error);
+      throw new Error(error.message || "Failed to analyze job posting");
+    }
+
+    if (!data.success) {
+      throw new Error(data.error || "Failed to analyze job posting");
+    }
+
+    return data.data;
+  };
+
+  // 공고 URL 처리
+  const processJobUrl = async (url: string) => {
+    if (!hasAnalysisCredits) {
+      toast.error("AI 분석 크레딧이 부족합니다. 요금제를 업그레이드해주세요.");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const jobData = await analyzeJobUrl(url);
+
+      await addJobPosting({
+        companyName: jobData.companyName || "회사명 확인 필요",
+        title: jobData.title || "채용 공고",
+        status: "reviewing",
+        priority: 0,
+        position: jobData.position || "미정",
+        language: jobData.language || "ko",
+        minExperience: jobData.minExperience,
+        workType: jobData.workType,
+        location: jobData.location,
+        visaSponsorship: jobData.visaSponsorship,
+        summary: jobData.summary || "공고 내용을 확인해주세요.",
+        companyScore:
+          typeof jobData.companyScore === "number"
+            ? jobData.companyScore
+            : undefined,
+        fitScore:
+          typeof jobData.fitScore === "number" ? jobData.fitScore : undefined,
+        keyCompetencies: jobData.keyCompetencies || [],
+        sourceUrl: url,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      toast.success(`${jobData.companyName} - ${jobData.title} 공고가 추가되었습니다`);
+      setInputValue("");
+    } catch (error: any) {
+      console.error("Error analyzing job:", error);
+
+      if (
+        error?.message?.includes("추출할 수 없습니다") ||
+        error?.message?.includes("noContent")
+      ) {
+        setPendingUrl(url);
+        setNoContentDialogOpen(true);
+      } else {
+        toast.error(error instanceof Error ? error.message : "공고 분석 실패");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 폼 제출 핸들러
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || isProcessing) return;
+
+    const urlToAnalyze = inputValue.trim();
+
+    if (!isUrl(urlToAnalyze)) {
+      toast.error("올바른 URL을 입력해주세요");
+      return;
+    }
+
+    // 공고 한도 체크
+    if (isAtJobLimit) {
+      setPendingUrl(urlToAnalyze);
+      setLimitDialogOpen(true);
+      return;
+    }
+
+    // 중복 체크
+    const existingJob = findExistingJobByUrl(urlToAnalyze);
+    if (existingJob) {
+      setPendingUrl(urlToAnalyze);
+      setDuplicateDialogOpen(true);
+      return;
+    }
+
+    // 채용 공고 URL인지 체크
+    if (!isLikelyJobUrl(urlToAnalyze)) {
+      setPendingUrl(urlToAnalyze);
+      setConfirmDialogOpen(true);
+      return;
+    }
+
+    await processJobUrl(urlToAnalyze);
+  };
+
+  // 다이얼로그 핸들러들
+  const handleConfirmJobUrl = async () => {
+    setConfirmDialogOpen(false);
+    if (pendingUrl) {
+      await processJobUrl(pendingUrl);
+      setPendingUrl(null);
+    }
+  };
+
+  const handleCancelJobUrl = () => {
+    setConfirmDialogOpen(false);
+    setPendingUrl(null);
+  };
+
+  const handleDuplicateConfirm = async () => {
+    setDuplicateDialogOpen(false);
+    if (pendingUrl) {
+      await processJobUrl(pendingUrl);
+      setPendingUrl(null);
+    }
+  };
+
+  const handleDuplicateCancel = () => {
+    setDuplicateDialogOpen(false);
+    setPendingUrl(null);
+  };
+
+  const handleNoContentConfirm = async () => {
+    setNoContentDialogOpen(false);
+    if (pendingUrl) {
+      await addJobPosting({
+        companyName: "수동 입력 필요",
+        title: "공고 내용 확인 필요",
+        status: "reviewing",
+        priority: 0,
+        position: "미정",
+        summary: "공고 내용을 직접 확인하고 입력해주세요.",
+        keyCompetencies: [],
+        sourceUrl: pendingUrl,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      toast.success("공고가 추가되었습니다. 정보를 직접 입력해주세요.");
+      setInputValue("");
+      setPendingUrl(null);
+    }
+  };
+
+  const handleNoContentCancel = () => {
+    setNoContentDialogOpen(false);
+    setPendingUrl(null);
+  };
 
   // Persist filters to localStorage
   const setFilters = (
@@ -365,6 +596,34 @@ export function BoardTab() {
           </div>
         </div>
 
+        {/* URL 입력 섹션 */}
+        <form onSubmit={handleSubmit} className="mb-4">
+          <div className="relative max-w-xl">
+            <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="채용 공고 URL을 붙여넣으세요"
+              className="w-full bg-card rounded-full pl-10 pr-12 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border focus:border-primary/30 shadow-sm"
+              disabled={isProcessing}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              variant="ghost"
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full w-8 h-8 hover:bg-primary hover:text-primary-foreground"
+              disabled={!inputValue.trim() || isProcessing}
+            >
+              {isProcessing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowRight className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </form>
+
         {/* Hero Summary */}
         <div className="bg-gradient-to-br from-primary/10 to-accent rounded-2xl p-4 border border-primary/10">
           <p className="text-sm text-foreground leading-relaxed">
@@ -397,6 +656,110 @@ export function BoardTab() {
           <TableView jobs={sortedJobs} />
         )}
       </div>
+
+      {/* Non-job URL Confirmation Dialog */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              공고가 아닌 링크일 수 있습니다
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              이 링크는 채용 공고가 아닌 것으로 보입니다. 계속 공고 등록을
+              진행하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelJobUrl}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmJobUrl}>
+              계속 진행
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate URL Confirmation Dialog */}
+      <AlertDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              이전에 공유한 적 있는 링크입니다
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              이 링크는 이미 보드에 추가된 공고입니다. 다시 추가하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDuplicateCancel}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateConfirm}>
+              추가
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* No Content Confirmation Dialog */}
+      <AlertDialog
+        open={noContentDialogOpen}
+        onOpenChange={setNoContentDialogOpen}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              공고 내용을 가져올 수 없습니다
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              해당 페이지가 마감되었거나 접근할 수 없는 상태입니다. 그래도
+              공고를 추가하고 직접 정보를 입력하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleNoContentCancel}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleNoContentConfirm}>
+              직접 입력하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Job Limit Dialog */}
+      <AlertDialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              공고 추가 한도 초과
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {subscription?.planName === "free"
+                ? `무료 요금제는 공고 ${subscription.jobLimit}개까지 추가할 수 있습니다. 더 많은 공고를 관리하려면 유료 요금제로 업그레이드해주세요.`
+                : "공고 추가 한도에 도달했습니다. 요금제를 업그레이드해주세요."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setLimitDialogOpen(false);
+                setPendingUrl(null);
+              }}
+            >
+              닫기
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

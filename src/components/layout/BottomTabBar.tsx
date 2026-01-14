@@ -1,5 +1,4 @@
 import {
-  MessageSquare,
   LayoutGrid,
   Briefcase,
   Target,
@@ -7,17 +6,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type TabId = "chat" | "board" | "career" | "goals" | "settings";
+export type TabId = "board" | "career" | "goals" | "settings";
 
 interface TabItem {
   id: TabId;
   label: string;
-  icon: typeof MessageSquare;
+  icon: typeof LayoutGrid;
 }
 
 export const tabs: TabItem[] = [
-  { id: "chat", label: "채팅", icon: MessageSquare },
-  { id: "board", label: "보드", icon: LayoutGrid },
+  { id: "board", label: "커리어 보드", icon: LayoutGrid },
   { id: "career", label: "경력", icon: Briefcase },
   { id: "goals", label: "목표", icon: Target },
   { id: "settings", label: "설정", icon: Settings },

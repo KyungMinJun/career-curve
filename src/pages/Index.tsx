@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { BottomTabBar, TabId } from '@/components/layout/BottomTabBar';
 import { DesktopSidebar } from '@/components/layout/DesktopSidebar';
-import { ChatTab } from '@/components/tabs/ChatTab';
 import { BoardTab } from '@/components/tabs/BoardTab';
 import { CareerTab } from '@/components/tabs/CareerTab';
 import { GoalsTab } from '@/components/tabs/GoalsTab';
@@ -11,14 +10,14 @@ import { SettingsTab } from '@/components/tabs/SettingsTab';
 
 type NavigateToTabDetail = TabId | { tab: TabId; tailoredResumeId?: string };
 
-const VALID_TABS: TabId[] = ['chat', 'board', 'career', 'goals', 'settings'];
+const VALID_TABS: TabId[] = ['board', 'career', 'goals', 'settings'];
 
 const Index = () => {
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
 
-  // Determine initial tab from URL or default to 'chat'
-  const initialTab = (tab && VALID_TABS.includes(tab as TabId)) ? (tab as TabId) : 'chat';
+  // Determine initial tab from URL or default to 'board'
+  const initialTab = (tab && VALID_TABS.includes(tab as TabId)) ? (tab as TabId) : 'board';
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
 
   // Handle tab change and update URL
@@ -32,17 +31,23 @@ const Index = () => {
   // Sync URL with activeTab state
   useEffect(() => {
     if (!tab) {
-      // Root path, redirect to chat
-      navigate('/chat', { replace: true });
+      // Root path, redirect to board
+      navigate('/board', { replace: true });
       return;
     }
 
     const urlTab = tab;
+    // Handle legacy /chat URL - redirect to /board
+    if (urlTab === 'chat') {
+      navigate('/board', { replace: true });
+      return;
+    }
+
     if (VALID_TABS.includes(urlTab as TabId) && urlTab !== activeTab) {
       setActiveTab(urlTab as TabId);
     } else if (!VALID_TABS.includes(urlTab as TabId)) {
-      // Invalid tab in URL, redirect to chat
-      navigate('/chat', { replace: true });
+      // Invalid tab in URL, redirect to board
+      navigate('/board', { replace: true });
     }
   }, [tab, activeTab, navigate]);
 
@@ -63,8 +68,6 @@ const Index = () => {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'chat':
-        return <ChatTab onNavigateToBoard={() => handleTabChange('board')} />;
       case 'board':
         return <BoardTab />;
       case 'career':
@@ -74,7 +77,7 @@ const Index = () => {
       case 'settings':
         return <SettingsTab />;
       default:
-        return <ChatTab onNavigateToBoard={() => handleTabChange('board')} />;
+        return <BoardTab />;
     }
   };
 
