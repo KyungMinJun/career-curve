@@ -358,7 +358,7 @@ export function ResumeBuilderDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-md max-h-[85vh] rounded-2xl flex flex-col p-0">
+        <DialogContent className="max-w-[92%] lg:max-w-[600px] max-h-[85vh] rounded-2xl flex flex-col p-0">
           <div className="px-6 pt-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">

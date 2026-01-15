@@ -1338,7 +1338,7 @@ function TailoredResumePreviewDialog({
     <>
       {/* Main Preview Dialog */}
       <Dialog open={open && !showFeedback} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[92%] max-h-[85vh] rounded-2xl flex flex-col">
+        <DialogContent className="max-w-[92%] max-h-[85vh] rounded-2xl flex flex-col lg:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" />
@@ -1407,7 +1407,7 @@ function TailoredResumePreviewDialog({
 
       {/* Separate AI Feedback Dialog with enhanced formatting */}
       <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-        <DialogContent className="max-w-[92%] max-h-[80vh] rounded-2xl">
+        <DialogContent className="max-w-[92%] max-h-[80vh] rounded-2xl lg:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary" />
@@ -1460,7 +1460,7 @@ function TailoredResumeEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92%] max-h-[80vh] rounded-2xl flex flex-col">
+      <DialogContent className="max-w-[92%] max-h-[80vh] rounded-2xl flex flex-col lg:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>공고별 이력서 편집</DialogTitle>
         </DialogHeader>
@@ -1687,7 +1687,7 @@ function ResumePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92%] max-h-[85vh] rounded-2xl flex flex-col lg:max-w-2xl">
+      <DialogContent className="max-w-[92%] max-h-[85vh] rounded-2xl flex flex-col lg:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="w-5 h-5" />
