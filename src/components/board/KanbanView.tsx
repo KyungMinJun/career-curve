@@ -61,7 +61,6 @@ export function KanbanView({
   };
 
   const updateScrollButtons = () => {
-    console.log("Updating scroll buttons");
     const container = scrollContainerRef.current;
     if (container) {
       setCanScrollLeft(container.scrollLeft > 10);
