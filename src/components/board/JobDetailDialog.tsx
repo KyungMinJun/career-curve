@@ -52,6 +52,7 @@ import {
   CheckCircle2,
   XCircle,
   HelpCircle,
+  Sparkles,
 } from "lucide-react";
 import { ResumeBuilderDialog } from "./ResumeBuilderDialog";
 import { FitEvaluationButton } from "./FitEvaluationButton";
@@ -122,17 +123,17 @@ export function JobDetailDialog({
   const companyAvg =
     companyCriteriaScores.filter((c) => c.score).length > 0
       ? Math.round(
-          companyCriteriaScores.reduce((sum, c) => sum + (c.score || 0), 0) /
-            companyCriteriaScores.filter((c) => c.score).length
-        )
+        companyCriteriaScores.reduce((sum, c) => sum + (c.score || 0), 0) /
+        companyCriteriaScores.filter((c) => c.score).length
+      )
       : 0;
 
   const fitAvg =
     keyCompetencyScores.filter((c) => c.score).length > 0
       ? Math.round(
-          keyCompetencyScores.reduce((sum, c) => sum + (c.score || 0), 0) /
-            keyCompetencyScores.filter((c) => c.score).length
-        )
+        keyCompetencyScores.reduce((sum, c) => sum + (c.score || 0), 0) /
+        keyCompetencyScores.filter((c) => c.score).length
+      )
       : 0;
 
   // Calculate relative priority based on all job postings
@@ -207,7 +208,7 @@ export function JobDetailDialog({
     const avg =
       Math.round(
         updated.reduce((sum, c) => sum + (c.score || 0), 0) /
-          updated.filter((c) => c.score).length
+        updated.filter((c) => c.score).length
       ) || 0;
     updateJobPosting(job.id, {
       companyCriteriaScores: updated,
@@ -224,7 +225,7 @@ export function JobDetailDialog({
     const avg =
       Math.round(
         updated.reduce((sum, c) => sum + (c.score || 0), 0) /
-          updated.filter((c) => c.score).length
+        updated.filter((c) => c.score).length
       ) || 0;
     updateJobPosting(job.id, {
       keyCompetencies: updated,
@@ -252,7 +253,7 @@ export function JobDetailDialog({
     const avg =
       Math.round(
         evaluatedCompetencies.reduce((sum, c) => sum + (c.score || 0), 0) /
-          evaluatedCompetencies.filter((c) => c.score).length
+        evaluatedCompetencies.filter((c) => c.score).length
       ) || 0;
     updateJobPosting(job.id, {
       keyCompetencies: evaluatedCompetencies,
@@ -317,29 +318,33 @@ export function JobDetailDialog({
     return value;
   };
 
+  const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+  const [isStep1Open, setIsStep1Open] = useState(true);
+  const [isStep2Open, setIsStep2Open] = useState(true);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[90%] sm:max-w-md lg:max-w-2xl xl:max-w-3xl max-h-[85vh] p-0 rounded-2xl overflow-hidden">
           <ScrollArea className="max-h-[85vh]">
-            <div className="p-6 px-8 space-y-6">
-              <DialogHeader className="space-y-2">
+            <div className="p-6 space-y-5">
+              {/* 1. Header Section */}
+              <div className="flex flex-col text-center sm:text-left space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground font-medium">
                       {job.companyName}
                     </p>
-                    <DialogTitle className="text-xl font-bold mt-1">
+                    <h2 className="tracking-tight text-xl font-bold mt-1">
                       {job.title}
-                    </DialogTitle>
+                    </h2>
                   </div>
                   {job.sourceUrl && (
                     <Button
                       variant="outline"
                       size="icon"
-                      className="shrink-0"
+                      className="shrink-0 h-10 w-10"
                       onClick={() => {
-                        // Check if LinkedIn URL - show copy message instead
                         const isLinkedIn = job.sourceUrl
                           ?.toLowerCase()
                           .includes("linkedin.com");
@@ -350,7 +355,6 @@ export function JobDetailDialog({
                           );
                           return;
                         }
-                        // Use noopener,noreferrer to avoid blocking
                         const link = document.createElement("a");
                         link.href = job.sourceUrl!;
                         link.target = "_blank";
@@ -362,154 +366,290 @@ export function JobDetailDialog({
                     </Button>
                   )}
                 </div>
-                <div className="pt-2">
-                  <Select
-                    value={job.status}
-                    onValueChange={(v) => handleStatusChange(v as JobStatus)}
+              </div>
+
+              {/* 2. Status Section */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">지원 상태</span>
+                </div>
+                <Select
+                  value={job.status}
+                  onValueChange={(v) => handleStatusChange(v as JobStatus)}
+                >
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      [
+                        "reviewing",
+                        "applied",
+                        "interview",
+                        "offer",
+                        "rejected-docs",
+                        "rejected-interview",
+                        "accepted",
+                        "closed",
+                      ] as JobStatus[]
+                    ).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        <Badge className={cn("text-xs", STATUS_COLORS[key])}>
+                          {STATUS_LABELS[key]}
+                        </Badge>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 3. Job Summary Collapsible */}
+              <Collapsible open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between px-0 h-auto py-2 hover:bg-accent hover:text-accent-foreground"
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Status order: 지원검토 → 서류지원 → 인터뷰 → 오퍼 → 불합격-서류 → 불합격-인터뷰 → 합격-최종 → 공고마감 */}
-                      {(
-                        [
-                          "reviewing",
-                          "applied",
-                          "interview",
-                          "offer",
-                          "rejected-docs",
-                          "rejected-interview",
-                          "accepted",
-                          "closed",
-                        ] as JobStatus[]
-                      ).map((key) => (
-                        <SelectItem key={key} value={key}>
-                          <Badge className={cn("text-xs", STATUS_COLORS[key])}>
-                            {STATUS_LABELS[key]}
-                          </Badge>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </DialogHeader>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold">공고 요약</span>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 text-muted-foreground transition-transform",
+                        isSummaryOpen && "rotate-180"
+                      )}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-3">
+                  {/* Job Summary Text */}
+                  {job.summary ? (
+                    <div className="bg-accent/50 rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                        {job.summary}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-accent/30 rounded-lg p-3 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        AI 요약 정보가 없습니다.
+                      </p>
+                    </div>
+                  )}
 
-              {/* Priority Section */}
-              <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                  {/* Minimum Requirements Check */}
+                  {minimumRequirementsCheck && (
+                    <div
+                      className={cn(
+                        "rounded-lg p-3 flex items-start gap-3 border",
+                        minimumRequirementsCheck.experienceMet === "충족"
+                          ? "bg-success/10 border-success/20"
+                          : minimumRequirementsCheck.experienceMet === "미충족"
+                            ? "bg-destructive/10 border-destructive/20"
+                            : "bg-warning/10 border-warning/20"
+                      )}
+                    >
+                      {minimumRequirementsCheck.experienceMet === "충족" ? (
+                        <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                      ) : minimumRequirementsCheck.experienceMet === "미충족" ? (
+                        <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                      ) : (
+                        <HelpCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p
+                          className={cn(
+                            "text-sm font-semibold",
+                            minimumRequirementsCheck.experienceMet === "충족"
+                              ? "text-success"
+                              : minimumRequirementsCheck.experienceMet ===
+                                "미충족"
+                                ? "text-destructive"
+                                : "text-warning"
+                          )}
+                        >
+                          최소 경력 조건:{" "}
+                          {minimumRequirementsCheck.experienceMet}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {minimumRequirementsCheck.reason}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Job Detail Fields */}
+                  <div className="grid gap-3 pt-2">
+                    <InfoRowWithEvidence
+                      icon={<Briefcase className="w-4 h-4" />}
+                      label="포지션"
+                      value={job.position}
+                      field="position"
+                      editingField={editingField}
+                      setEditingField={setEditingField}
+                      onSave={(v) => handleFieldUpdate("position", v)}
+                    />
+                    <InfoRowWithEvidence
+                      icon={<Calendar className="w-4 h-4" />}
+                      label="최소 경력"
+                      value={getDisplayValue(job.minExperience)}
+                      evidence={job.minExperienceEvidence}
+                      field="minExperience"
+                      editingField={editingField}
+                      setEditingField={setEditingField}
+                      onSave={(v) => handleFieldUpdate("minExperience", v)}
+                      isUnconfirmed={!job.minExperience}
+                    />
+                    <InfoRowWithEvidence
+                      icon={<Building2 className="w-4 h-4" />}
+                      label="근무 형태"
+                      value={getDisplayValue(job.workType)}
+                      evidence={job.workTypeEvidence}
+                      field="workType"
+                      editingField={editingField}
+                      setEditingField={setEditingField}
+                      onSave={(v) => handleFieldUpdate("workType", v)}
+                      isUnconfirmed={!job.workType}
+                    />
+                    <InfoRowWithEvidence
+                      icon={<MapPin className="w-4 h-4" />}
+                      label="위치"
+                      value={getDisplayValue(job.location)}
+                      evidence={job.locationEvidence}
+                      field="location"
+                      editingField={editingField}
+                      setEditingField={setEditingField}
+                      onSave={(v) => handleFieldUpdate("location", v)}
+                      isUnconfirmed={!job.location}
+                    />
+                    <InfoRowWithEvidence
+                      icon={<Globe className="w-4 h-4" />}
+                      label="비자 지원"
+                      value={
+                        job.visaSponsorship === undefined ||
+                          job.visaSponsorship === null
+                          ? "확인 불가"
+                          : job.visaSponsorship
+                            ? "가능"
+                            : "불가"
+                      }
+                      evidence={job.visaSponsorshipEvidence}
+                      field="visaSponsorship"
+                      editingField={editingField}
+                      setEditingField={setEditingField}
+                      onSave={(v) =>
+                        handleFieldUpdate("visaSponsorship", v === "가능")
+                      }
+                      isUnconfirmed={
+                        job.visaSponsorship === undefined ||
+                        job.visaSponsorship === null
+                      }
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* 4. Priority Card */}
+              <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    우선순위
-                  </h3>
-                  <Badge variant="outline" className="text-sm font-bold">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">우선순위</span>
+                    <div className="inline-flex items-center rounded-full border border-transparent font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground text-[10px] gap-1 px-1.5 py-0 h-5 bg-background">
+                      <Sparkles className="w-3 h-3" />
+                      AI 자동
+                    </div>
+                  </div>
+                  <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground text-sm font-bold bg-background">
                     #{job.priority}
-                  </Badge>
+                  </div>
                 </div>
-
+                <p className="text-xs text-muted-foreground">
+                  아래 평가 결과에 따라 자동 계산됩니다. 직접 조정도 가능합니다.
+                </p>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((p) => (
-                    <Button
+                    <button
                       key={p}
-                      variant={job.priority === p ? "default" : "outline"}
-                      size="sm"
-                      className="flex-1"
                       onClick={() => handlePriorityChange(p)}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 rounded-md px-3 flex-1",
+                        job.priority === p
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                      )}
                     >
                       #{p}
-                    </Button>
+                    </button>
                   ))}
                 </div>
-
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
-                      회사 매력도
-                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      핵심 역량 적합도
+                    </span>
                     <div className="flex items-center gap-2">
-                      {companyAvg > 0 && (
-                        <span className="text-lg font-bold text-primary">
-                          {companyAvg}
-                        </span>
-                      )}
+                      <span className="text-lg font-bold text-primary">
+                        {fitAvg}
+                      </span>
                       <span className="text-xs text-muted-foreground">/ 5</span>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
-                      내 적합도
-                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      회사 매력도
+                    </span>
                     <div className="flex items-center gap-2">
-                      {fitAvg > 0 && (
-                        <span className="text-lg font-bold text-primary">
-                          {fitAvg}
-                        </span>
-                      )}
+                      <span className="text-lg font-bold text-primary">
+                        {companyAvg}
+                      </span>
                       <span className="text-xs text-muted-foreground">/ 5</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {job.summary && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    AI 요약
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed bg-accent/50 rounded-lg p-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {job.summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Minimum Requirements Check - 최소 조건 충족 여부 */}
-              {minimumRequirementsCheck && (
-                <div
-                  className={cn(
-                    "rounded-lg p-3 flex items-start gap-3 border",
-                    minimumRequirementsCheck.experienceMet === "충족"
-                      ? "bg-success/10 border-success/20"
-                      : minimumRequirementsCheck.experienceMet === "미충족"
-                      ? "bg-destructive/10 border-destructive/20"
-                      : "bg-warning/10 border-warning/20"
-                  )}
-                >
-                  {minimumRequirementsCheck.experienceMet === "충족" ? (
-                    <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
-                  ) : minimumRequirementsCheck.experienceMet === "미충족" ? (
-                    <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                  ) : (
-                    <HelpCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-                  )}
-                  <div>
-                    <p
-                      className={cn(
-                        "text-sm font-semibold",
-                        minimumRequirementsCheck.experienceMet === "충족"
-                          ? "text-success"
-                          : minimumRequirementsCheck.experienceMet === "미충족"
-                          ? "text-destructive"
-                          : "text-warning"
-                      )}
-                    >
-                      최소 경력 조건: {minimumRequirementsCheck.experienceMet}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {minimumRequirementsCheck.reason}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Key Competencies from AI - with scoring and AI evaluation */}
-              {keyCompetencyScores.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      핵심 역량 (채용담당자 관점)
-                    </h3>
-                  </div>
-
-                  {/* 종합 피드백 - 평가 결과가 있을 때만 표시 */}
+              {/* 5. Step 1: Core Competency Fit */}
+              <Collapsible open={isStep1Open} onOpenChange={setIsStep1Open}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between px-0 h-auto py-2 hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors",
+                          fitAvg > 0
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-primary/20 text-primary"
+                        )}
+                      >
+                        {fitAvg > 0 ? <Check className="w-2.5 h-2.5" /> : "1"}
+                      </div>
+                      <span className="text-sm font-semibold">
+                        Step 1. 핵심 역량 적합도
+                      </span>
+                      <div className="inline-flex items-center rounded-full border font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground text-[10px] gap-1 px-1.5 py-0 h-5">
+                        <Sparkles className="w-3 h-3" />
+                        AI 자동
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-primary">
+                        {fitAvg}/5
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "w-4 h-4 text-muted-foreground transition-transform",
+                          isStep1Open && "rotate-180"
+                        )}
+                      />
+                    </div>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-2">
+                  {/* Integrated Competency Logic */}
                   {fitAvg > 0 && (
                     <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
                       <h4 className="text-xs font-semibold text-primary mb-1">
@@ -535,13 +675,7 @@ export function JobDetailDialog({
                       </p>
                     </div>
                   )}
-
-                  <p className="text-xs text-muted-foreground">
-                    AI가 추출한 5가지 핵심 역량입니다. 아래 버튼으로 내 경험
-                    기반 적합도를 자동 평가하거나, 직접 점수를 입력하세요.
-                  </p>
-
-                  {/* AI Evaluation Button */}
+                  <p class="text-xs text-muted-foreground">AI가 추출한 핵심 역량입니다. 버튼으로 자동 평가하거나 별점을 클릭해 직접 수정하세요.</p>
                   <FitEvaluationButton
                     keyCompetencies={keyCompetencyScores}
                     experiences={experiences}
@@ -644,117 +778,63 @@ export function JobDetailDialog({
                       </div>
                     </Collapsible>
                   ))}
-                </div>
-              )}
+                  {keyCompetencyScores.length === 0 && (
+                    <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-warning">
+                          핵심 역량 분석 필요
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          새 공고를 등록하면 AI가 자동으로 5가지 핵심 역량을
+                          추출합니다.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
 
-              {keyCompetencyScores.length === 0 && (
-                <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-warning">
-                      핵심 역량 분석 필요
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      새 공고를 등록하면 AI가 자동으로 5가지 핵심 역량을
-                      추출합니다.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Auto-extracted Fields with Evidence */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  공고 정보
-                </h3>
-                <div className="grid gap-3">
-                  <InfoRowWithEvidence
-                    icon={<Briefcase className="w-4 h-4" />}
-                    label="포지션"
-                    value={job.position}
-                    field="position"
-                    editingField={editingField}
-                    setEditingField={setEditingField}
-                    onSave={(v) => handleFieldUpdate("position", v)}
-                  />
-                  <InfoRowWithEvidence
-                    icon={<Calendar className="w-4 h-4" />}
-                    label="최소 경력"
-                    value={getDisplayValue(job.minExperience)}
-                    evidence={job.minExperienceEvidence}
-                    field="minExperience"
-                    editingField={editingField}
-                    setEditingField={setEditingField}
-                    onSave={(v) => handleFieldUpdate("minExperience", v)}
-                    isUnconfirmed={!job.minExperience}
-                  />
-                  <InfoRowWithEvidence
-                    icon={<Building2 className="w-4 h-4" />}
-                    label="근무 형태"
-                    value={getDisplayValue(job.workType)}
-                    evidence={job.workTypeEvidence}
-                    field="workType"
-                    editingField={editingField}
-                    setEditingField={setEditingField}
-                    onSave={(v) => handleFieldUpdate("workType", v)}
-                    isUnconfirmed={!job.workType}
-                  />
-                  <InfoRowWithEvidence
-                    icon={<MapPin className="w-4 h-4" />}
-                    label="위치"
-                    value={getDisplayValue(job.location)}
-                    evidence={job.locationEvidence}
-                    field="location"
-                    editingField={editingField}
-                    setEditingField={setEditingField}
-                    onSave={(v) => handleFieldUpdate("location", v)}
-                    isUnconfirmed={!job.location}
-                  />
-                  <InfoRowWithEvidence
-                    icon={<Globe className="w-4 h-4" />}
-                    label="비자 지원"
-                    value={
-                      job.visaSponsorship === undefined ||
-                      job.visaSponsorship === null
-                        ? "확인 불가"
-                        : job.visaSponsorship
-                        ? "가능"
-                        : "불가"
-                    }
-                    evidence={job.visaSponsorshipEvidence}
-                    field="visaSponsorship"
-                    editingField={editingField}
-                    setEditingField={setEditingField}
-                    onSave={(v) =>
-                      handleFieldUpdate("visaSponsorship", v === "가능")
-                    }
-                    isUnconfirmed={
-                      job.visaSponsorship === undefined ||
-                      job.visaSponsorship === null
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Detailed Company Scoring */}
-              <Collapsible open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+              {/* 6. Step 2: Company Attractiveness */}
+              <Collapsible open={isStep2Open} onOpenChange={setIsStep2Open}>
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-between px-0"
+                    className="w-full justify-between px-0 h-auto py-2 hover:bg-accent hover:text-accent-foreground"
                   >
-                    <span className="font-semibold">
-                      회사 평가하기 (자세히보기)
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "w-4 h-4 transition-transform",
-                        isDetailOpen && "rotate-180"
-                      )}
-                    />
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors",
+                          companyAvg > 0
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-primary/20 text-primary"
+                        )}
+                      >
+                        {companyAvg > 0 ? (
+                          <Check className="w-2.5 h-2.5" />
+                        ) : (
+                          "2"
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold">
+                        Step 2. 회사 매력도
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-primary">
+                        {companyAvg}/5
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "w-4 h-4 text-muted-foreground transition-transform",
+                          isStep2Open && "rotate-180"
+                        )}
+                      />
+                    </div>
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-3 pt-4">
+                <CollapsibleContent className="space-y-3 pt-2">
                   {companyCriteriaScores.length === 0 ? (
                     <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 text-center">
                       <p className="text-sm font-medium text-warning">
@@ -767,8 +847,7 @@ export function JobDetailDialog({
                   ) : (
                     <>
                       <p className="text-xs text-muted-foreground">
-                        목표 탭에서 설정한 5가지 기준으로 회사를 평가하세요.
-                        같은 별을 다시 누르면 0점으로 초기화됩니다.
+                        목표 탭에서 설정한 기준으로 회사를 평가하세요. 별점을 클릭해 수정하고, 같은 별을 다시 누르면 0점으로 초기화됩니다.
                       </p>
                       {companyCriteriaScores.map((criteria, index) => (
                         <div
@@ -801,14 +880,27 @@ export function JobDetailDialog({
                 </CollapsibleContent>
               </Collapsible>
 
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => setIsResumeBuilderOpen(true)}
-                disabled={!keyCompetencyScores.length}
-              >
-                <FileText className="w-4 h-4 mr-2" />이 공고 맞춤 이력서 만들기
-              </Button>
+              {/* 7. Step 3: Create Resume */}
+              <div className="space-y-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors bg-primary/20 text-primary">
+                    3
+                  </div>
+                  <span className="text-sm font-semibold">
+                    Step 3. 맞춤 이력서 만들기
+                  </span>
+                </div>
+                <div className="pl-auto">
+                  <Button
+                    className="w-full h-11"
+                    onClick={() => setIsResumeBuilderOpen(true)}
+                    disabled={!keyCompetencyScores.length}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    이 공고 맞춤 이력서 만들기
+                  </Button>
+                </div>
+              </div>
             </div>
           </ScrollArea>
         </DialogContent>
