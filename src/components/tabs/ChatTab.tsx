@@ -62,12 +62,9 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
     addJobPosting,
     jobPostings,
     canAddJob,
-    subscription,
-    hasAiCredits,
   } = useData();
 
   const isAtJobLimit = !canAddJob(jobPostings.length);
-  const hasAnalysisCredits = hasAiCredits();
 
   // Check if URL was already shared
   const findExistingJobByUrl = (url: string) => {
@@ -111,11 +108,6 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
   };
 
   const processJobUrl = async (url: string) => {
-    // Check AI analysis credits first (UI-only check, actual deduction happens server-side)
-    if (!hasAnalysisCredits) {
-      toast.error("AI 분석 크레딧이 부족합니다. 요금제를 업그레이드해주세요.");
-      return;
-    }
 
     // Credits are now deducted server-side in the edge function
 
@@ -482,9 +474,7 @@ export function ChatTab({ onNavigateToBoard }: ChatTabProps) {
               공고 추가 한도 초과
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {subscription?.planName === "free"
-                ? `무료 요금제는 공고 ${subscription.jobLimit}개까지 추가할 수 있습니다. 더 많은 공고를 관리하려면 유료 요금제로 업그레이드해주세요.`
-                : "공고 추가 한도에 도달했습니다. 요금제를 업그레이드해주세요."}
+              최대 5개의 공고만 저장할 수 있습니다. 기존 공고를 삭제한 후 새 공고를 추가해주세요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -128,10 +128,10 @@ export function useSubscription() {
   }, [subscription]);
 
   // Check if user has AI credits (for analyze-job, evaluate-fit)
+  // NOTE: AI 적합도 평가는 무제한 사용 가능하도록 항상 true 반환
   const hasAiCredits = useCallback(() => {
-    if (!subscription) return false;
-    return subscription.aiCreditsRemaining > 0;
-  }, [subscription]);
+    return true;
+  }, []);
 
   // Check if user has resume generation credits
   const hasResumeCredits = useCallback(() => {
@@ -140,34 +140,10 @@ export function useSubscription() {
   }, [subscription]);
 
   // Use AI credit (for analyze-job, evaluate-fit)
-  const useAiCredit = useCallback(async (amount: number = 1) => {
-    if (!user || !subscription) return false;
-    
-    if (subscription.aiCreditsRemaining < amount) {
-      return false;
-    }
-
-    const { error } = await supabase
-      .from('user_subscriptions')
-      .update({
-        ai_credits_remaining: subscription.aiCreditsRemaining - amount,
-        ai_credits_used: subscription.aiCreditsUsed + amount,
-      })
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error using AI credit:', error);
-      return false;
-    }
-
-    setSubscription(prev => prev ? {
-      ...prev,
-      aiCreditsRemaining: prev.aiCreditsRemaining - amount,
-      aiCreditsUsed: prev.aiCreditsUsed + amount,
-    } : null);
-
+  // NOTE: AI 적합도 평가는 무제한 사용 가능하도록 크레딧 차감 없이 true 반환
+  const useAiCredit = useCallback(async (_amount: number = 1) => {
     return true;
-  }, [user, subscription]);
+  }, []);
 
   // Use resume credit (for generate-resume)
   const useResumeCredit = useCallback(async (amount: number = 1) => {

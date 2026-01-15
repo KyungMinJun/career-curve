@@ -11,12 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save, ExternalLink, X, Shield } from 'lucide-react';
+import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save, ExternalLink, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useData } from '@/contexts/DataContext';
-import { usePhoneVerification } from '@/hooks/usePhoneVerification';
-import { PhoneVerificationDialog } from '@/components/auth/PhoneVerificationDialog';
 
 interface ResumeBuilderDialogProps {
   open: boolean;
@@ -76,13 +74,9 @@ export function ResumeBuilderDialog({
   const [isSaved, setIsSaved] = useState(false);
   const [lastSavedTailoredResumeId, setLastSavedTailoredResumeId] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
-  const { addTailoredResume, hasResumeCredits, subscription } = useData();
-  const { isVerified: isPhoneVerified, isLoading: isPhoneLoading, refetch: refetchPhone } = usePhoneVerification();
+  const { addTailoredResume, hasResumeCredits } = useData();
 
   const hasCredits = hasResumeCredits();
-  const isPaidPlan = subscription?.planName !== 'free';
-  const needsPhoneVerification = !isPhoneVerified && !isPhoneLoading;
 
   const workExperiences = useMemo(() => experiences.filter(e => e.type === 'work'), [experiences]);
   const projectExperiences = useMemo(() => experiences.filter(e => e.type === 'project'), [experiences]);
@@ -132,20 +126,8 @@ export function ResumeBuilderDialog({
       return;
     }
 
-    // Free plan cannot generate resumes
-    if (!isPaidPlan) {
-      toast.error('맞춤 이력서 생성은 유료 요금제 전용 기능입니다.');
-      return;
-    }
-
     if (!hasCredits) {
-      toast.error('이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
-      return;
-    }
-
-    // Check if phone verification is required
-    if (needsPhoneVerification) {
-      setShowPhoneDialog(true);
+      toast.error('이력서 생성 횟수를 모두 사용했습니다.');
       return;
     }
 
@@ -187,7 +169,7 @@ export function ResumeBuilderDialog({
       // Handle specific error codes from server-side credit check
       if (!data?.success && data?.error) {
         if (data.error === 'Insufficient resume credits') {
-          toast.error('이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.');
+          toast.error('이력서 생성 횟수를 모두 사용했습니다.');
           return;
         }
         throw new Error(data.error);
@@ -373,11 +355,6 @@ export function ResumeBuilderDialog({
     onOpenChange(open);
   };
 
-  const handlePhoneVerified = () => {
-    refetchPhone();
-    // User can now click generate again
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -403,23 +380,12 @@ export function ResumeBuilderDialog({
           <div className="px-6 pb-6 pt-3 border-t border-border bg-background">
             {step === 1 && !generatedContent && (
               <div className="flex flex-col gap-2">
-                {!isPaidPlan && (
+                {!hasCredits && (
                   <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
-                    맞춤 이력서 생성은 유료 요금제 전용 기능입니다.
+                    이력서 생성 횟수를 모두 사용했습니다.
                   </div>
                 )}
-                {isPaidPlan && !hasCredits && (
-                  <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-lg text-center">
-                    이력서 생성 크레딧이 부족합니다. 요금제를 업그레이드해주세요.
-                  </div>
-                )}
-                {isPaidPlan && hasCredits && needsPhoneVerification && (
-                  <div className="bg-warning/10 text-warning text-xs p-2 rounded-lg text-center flex items-center justify-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5" />
-                    전화번호 인증 후 사용 가능합니다.
-                  </div>
-                )}
-                {isPaidPlan && hasCredits && !needsPhoneVerification && !isGenerating && (
+                {hasCredits && !isGenerating && (
                   <div className="bg-muted/50 text-muted-foreground text-xs p-2 rounded-lg text-center">
                     20초 정도 소요됩니다. 중간에 창을 닫거나 나가면 저장되지 않습니다.
                   </div>
@@ -442,9 +408,8 @@ export function ResumeBuilderDialog({
                   <Button
                     className="w-full"
                     onClick={handleGenerate}
-                    disabled={selectedExperiences.length === 0 || !hasCredits || !isPaidPlan}
+                    disabled={selectedExperiences.length === 0 || !hasCredits}
                   >
-                    {needsPhoneVerification && <Shield className="w-4 h-4 mr-2" />}
                     맞춤 이력서 생성
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -493,13 +458,6 @@ export function ResumeBuilderDialog({
           </div>
         </DialogContent>
       </Dialog>
-
-      <PhoneVerificationDialog
-        open={showPhoneDialog}
-        onOpenChange={setShowPhoneDialog}
-        onVerified={handlePhoneVerified}
-        triggerReason="resume_generation"
-      />
     </>
   );
 }
