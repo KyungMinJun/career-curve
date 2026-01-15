@@ -76,7 +76,7 @@ export function SettingsTab() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground pt-4">
-          커브 v1.0.0
+          커브 v0.9.0
         </p>
       </div>
 
