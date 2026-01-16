@@ -393,7 +393,7 @@ export function CareerTab() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="경력"
+        title="목표 • 경력 관리"
         subtitle="목표를 세우고 이력서와 경력을 관리하세요"
       />
 

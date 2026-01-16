@@ -1,8 +1,4 @@
-import {
-  LayoutGrid,
-  Briefcase,
-  Settings,
-} from "lucide-react";
+import { LayoutGrid, Briefcase, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type TabId = "board" | "career" | "settings";
@@ -15,7 +11,7 @@ interface TabItem {
 
 export const tabs: TabItem[] = [
   { id: "board", label: "커리어 보드", icon: LayoutGrid },
-  { id: "career", label: "경력", icon: Briefcase },
+  { id: "career", label: "목표 • 경력 관리", icon: Briefcase },
   { id: "settings", label: "설정", icon: Settings },
 ];
 
