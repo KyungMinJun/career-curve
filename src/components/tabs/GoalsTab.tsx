@@ -88,18 +88,16 @@ function isGoalEnded(goal: CareerGoal | null): boolean {
 export function GoalsSection() {
   const { currentGoals, addGoal, updateGoal, removeGoal } = useData();
   const [goalHistory, setGoalHistory] = useState<any[]>([]);
-  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [editingGoal, setEditingGoal] = useState<CareerGoal | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [pendingNewGoal, setPendingNewGoal] = useState<CareerGoal | null>(null);
 
-  const activeGoals = currentGoals.filter((g) => !isGoalEnded(g));
+  const activeGoals = currentGoals;
 
   const handleAddNewGoal = () => {
     const newGoal = createBlankGoal();
-    setEditingGoalId(newGoal.id);
+    setEditingGoal(newGoal);
     setIsAddingNew(true);
-    setPendingNewGoal(newGoal);
   };
 
   const archiveGoal = (goal: CareerGoal) => {
@@ -131,13 +129,13 @@ export function GoalsSection() {
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
               <h2 className="font-semibold text-foreground">현재 목표</h2>
-              {activeGoals.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {activeGoals.length}
-                </Badge>
-              )}
             </div>
-            <Button variant="default" size="sm" onClick={handleAddNewGoal}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleAddNewGoal}
+              disabled={activeGoals.length > 0}
+            >
               <Target className="w-4 h-4 mr-2" />새 목표
             </Button>
           </div>
@@ -149,7 +147,7 @@ export function GoalsSection() {
               const startDate = new Date(goal.startDate);
               const daysSinceStart = Math.floor(
                 (new Date().getTime() - startDate.getTime()) /
-                  (1000 * 60 * 60 * 24)
+                (1000 * 60 * 60 * 24)
               );
 
               return (
@@ -239,7 +237,7 @@ export function GoalsSection() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => setEditingGoalId(goal.id)}
+                      onClick={() => setEditingGoal(goal)}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
                       수정
@@ -251,7 +249,7 @@ export function GoalsSection() {
                       onClick={() => handleArchiveGoal(goal)}
                     >
                       <History className="w-4 h-4 mr-2" />
-                      기록으로
+                      이전 목표로 이동
                     </Button>
                   </div>
                 </div>
@@ -274,7 +272,7 @@ export function GoalsSection() {
           <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
               <History className="w-5 h-5 text-muted-foreground" />
-              <h2 className="font-semibold text-foreground">이전 기록</h2>
+              <h2 className="font-semibold text-foreground">이전 목표</h2>
               <Badge variant="secondary" className="text-xs">
                 {goalHistory.length}
               </Badge>
@@ -300,8 +298,8 @@ export function GoalsSection() {
                     : null;
                   const periodStr = goalEndDate
                     ? `${formatKoreanDate(goalStartDate)}~${formatKoreanDate(
-                        goalEndDate
-                      )}`
+                      goalEndDate
+                    )}`
                     : `${formatKoreanDate(goalStartDate)}~`;
 
                   return (
@@ -321,9 +319,7 @@ export function GoalsSection() {
                             size="icon"
                             className="w-7 h-7"
                             onClick={() => {
-                              addGoal(record.goal);
-                              removeGoalHistory(record.id);
-                              setEditingGoalId(record.goal.id);
+                              setEditingGoal(record.goal);
                             }}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -358,52 +354,36 @@ export function GoalsSection() {
       </Collapsible>
 
       {/* Goals Edit Dialog */}
-      {editingGoalId && (
+      {editingGoal && (
         <GoalsEditDialog
-          open={!!editingGoalId}
+          open={!!editingGoal}
           onOpenChange={(open) => {
             if (!open) {
-              // If adding new and cancelled, just clear
-              if (isAddingNew) {
-                setPendingNewGoal(null);
-              }
-              setEditingGoalId(null);
+              setEditingGoal(null);
               setIsAddingNew(false);
             }
           }}
-          goal={
-            pendingNewGoal && pendingNewGoal.id === editingGoalId
-              ? pendingNewGoal
-              : currentGoals.find((g) => g.id === editingGoalId)!
-          }
+          goal={editingGoal}
           onSave={(newGoal) => {
-            // 새 목표 추가인 경우
-            if (isAddingNew && pendingNewGoal) {
-              // 종료일이 입력되면 자동으로 "이전 기록"으로 이동
-              if (newGoal.endDate) {
-                archiveGoal(newGoal);
-                setHistoryOpen(true);
+            if (isAddingNew) {
+              addGoal(newGoal);
+            } else {
+              // Check if it exists in active goals to decide whether to update or update history
+              const isActive = currentGoals.some((g) => g.id === newGoal.id);
+              if (isActive) {
+                updateGoal(newGoal.id, newGoal);
               } else {
-                addGoal(newGoal);
+                // Update history
+                setGoalHistory((prev) =>
+                  prev.map((record) =>
+                    record.goal.id === newGoal.id
+                      ? { ...record, goal: newGoal }
+                      : record
+                  )
+                );
               }
-              setPendingNewGoal(null);
-              setEditingGoalId(null);
-              setIsAddingNew(false);
-              return;
             }
-
-            // 기존 목표 수정인 경우
-            if (newGoal.endDate) {
-              archiveGoal(newGoal);
-              removeGoal(newGoal.id);
-              setHistoryOpen(true);
-              setEditingGoalId(null);
-              setIsAddingNew(false);
-              return;
-            }
-
-            updateGoal(newGoal.id, newGoal);
-            setEditingGoalId(null);
+            setEditingGoal(null);
             setIsAddingNew(false);
           }}
         />
@@ -435,6 +415,7 @@ function GoalsEditDialog({
     endDate: goal.endDate ? toDateInputValue(goal.endDate) : "",
   });
   const [resultError, setResultError] = useState(false);
+  const [reasonError, setReasonError] = useState(false);
 
   const updateCriteriaWeight = (index: number, weight: number) => {
     const updated = [...formData.companyEvalCriteria];
@@ -460,11 +441,14 @@ function GoalsEditDialog({
       : new Date();
     const endDate = formData.endDate ? new Date(formData.endDate) : undefined;
 
-    // If endDate is set, result is required
-    if (endDate && !formData.result.trim()) {
-      setResultError(true);
+    // Validate reason
+    if (!formData.reason.trim()) {
+      setReasonError(true);
       return;
     }
+    setReasonError(false);
+
+    // Result error logic removed but keeping state reset
     setResultError(false);
 
     onSave({
@@ -493,7 +477,9 @@ function GoalsEditDialog({
             <Label>현재 목표 기간</Label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">시작일</Label>
+                <Label className="text-xs text-muted-foreground">
+                  시작일 <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   type="date"
                   value={formData.startDate}
@@ -503,15 +489,24 @@ function GoalsEditDialog({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  종료일(입력 시 이전 기록으로 이동)
-                </Label>
+                <Label className="text-xs text-muted-foreground">종료일</Label>
                 <Input
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const newEndDate = e.target.value;
+                    setFormData((prev) => {
+                      let newStartDate = prev.startDate;
+                      if (newEndDate && newEndDate < newStartDate) {
+                        newStartDate = newEndDate;
+                      }
+                      return {
+                        ...prev,
+                        endDate: newEndDate,
+                        startDate: newStartDate,
+                      };
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -539,14 +534,24 @@ function GoalsEditDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reason">이직 이유</Label>
+            <Label
+              htmlFor="reason"
+              className={cn(reasonError && "text-destructive")}
+            >
+              이직 이유 <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="reason"
               value={formData.reason}
-              onChange={(e) =>
-                setFormData({ ...formData, reason: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, reason: e.target.value });
+                if (e.target.value.trim()) setReasonError(false);
+              }}
               rows={2}
+              className={cn(
+                reasonError &&
+                "border-destructive ring-destructive focus-visible:ring-destructive"
+              )}
             />
           </div>
 
@@ -567,8 +572,7 @@ function GoalsEditDialog({
               htmlFor="result"
               className={cn(resultError && "text-destructive")}
             >
-              결과{" "}
-              {formData.endDate && <span className="text-destructive">*</span>}
+              결과
             </Label>
             <Textarea
               id="result"
@@ -581,7 +585,7 @@ function GoalsEditDialog({
               placeholder="이 목표의 결과를 기록하세요"
               className={cn(
                 resultError &&
-                  "border-destructive ring-destructive focus-visible:ring-destructive"
+                "border-destructive ring-destructive focus-visible:ring-destructive"
               )}
             />
             {resultError && (
