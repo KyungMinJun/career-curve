@@ -5,12 +5,11 @@ import { BottomTabBar, TabId } from '@/components/layout/BottomTabBar';
 import { DesktopSidebar } from '@/components/layout/DesktopSidebar';
 import { BoardTab } from '@/components/tabs/BoardTab';
 import { CareerTab } from '@/components/tabs/CareerTab';
-import { GoalsTab } from '@/components/tabs/GoalsTab';
 import { SettingsTab } from '@/components/tabs/SettingsTab';
 
 type NavigateToTabDetail = TabId | { tab: TabId; tailoredResumeId?: string };
 
-const VALID_TABS: TabId[] = ['board', 'career', 'goals', 'settings'];
+const VALID_TABS: TabId[] = ['board', 'career', 'settings'];
 
 const Index = () => {
   const { tab } = useParams<{ tab?: string }>();
@@ -72,8 +71,6 @@ const Index = () => {
         return <BoardTab />;
       case 'career':
         return <CareerTab />;
-      case 'goals':
-        return <GoalsTab />;
       case 'settings':
         return <SettingsTab />;
       default:

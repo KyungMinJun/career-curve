@@ -70,6 +70,7 @@ import {
   formatResumeForPreview,
   ResumeFormat,
 } from "@/lib/tailoredResumeExporter";
+import { GoalsSection } from "./GoalsTab";
 
 export function CareerTab() {
   const {
@@ -394,7 +395,16 @@ export function CareerTab() {
     <div className="flex flex-col h-full">
       <PageHeader title="경력" subtitle="이력서와 경험을 관리하세요" />
 
-      <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4 scrollbar-hide w-[90%] lg:w-[600px] mx-auto">
+      <div className="flex-1 overflow-y-auto px-4 pb-20 scrollbar-hide">
+        {/* Responsive two-column layout: Goals (left) + Career (right) on desktop, stacked on mobile */}
+        <div className="flex flex-col lg:flex-row gap-6 max-w-[1400px] mx-auto">
+          {/* Left column: Goals */}
+          <div className="w-full lg:w-1/2">
+            <GoalsSection />
+          </div>
+
+          {/* Right column: Career content */}
+          <div className="w-full lg:w-1/2 space-y-4">
         {/* Resumes Section */}
         <Collapsible open={resumesOpen} onOpenChange={setResumesOpen}>
           <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
@@ -693,6 +703,10 @@ export function CareerTab() {
             </CollapsibleContent>
           </div>
         </Collapsible>
+          </div>
+          {/* End of right column (Career content) */}
+        </div>
+        {/* End of flex container */}
       </div>
 
       {/* Experience Add/Edit Dialog */}

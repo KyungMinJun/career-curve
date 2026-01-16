@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useData } from "@/contexts/DataContext";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/layout/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -85,23 +84,21 @@ function isGoalEnded(goal: CareerGoal | null): boolean {
   return !!goal?.endDate;
 }
 
-export function GoalsTab() {
+// GoalsSection - Embeddable section component (used in merged CareerTab)
+export function GoalsSection() {
   const { currentGoals, addGoal, updateGoal, removeGoal } = useData();
-  const [goalHistory, setGoalHistory] = useState<any[]>([]); // Local state for history since not in DB yet
+  const [goalHistory, setGoalHistory] = useState<any[]>([]);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pendingNewGoal, setPendingNewGoal] = useState<CareerGoal | null>(null);
 
-  // Filter out goals that have endDate (they should be archived)
   const activeGoals = currentGoals.filter((g) => !isGoalEnded(g));
 
   const handleAddNewGoal = () => {
     const newGoal = createBlankGoal();
-    // 먼저 편집 다이얼로그를 열어 사용자가 저장하면 추가
     setEditingGoalId(newGoal.id);
     setIsAddingNew(true);
-    // 바로 추가하지 않고 임시로 저장 - 저장 시에 addGoal 호출
     setPendingNewGoal(newGoal);
   };
 
@@ -126,20 +123,20 @@ export function GoalsTab() {
   };
 
   return (
-    <div className="flex flex-col h-full items-center">
-      <PageHeader
-        className="w-full"
-        title="커리어 목표"
-        subtitle="목표를 정하고 기록하세요"
-        right={
-          <Button variant="default" size="sm" onClick={handleAddNewGoal}>
-            <Target className="w-4 h-4 mr-2" />새 목표
-          </Button>
-        }
-      />
-      <div className="flex-1 overflow-y-auto space-y-4 scrollbar-hide w-[90%] lg:w-[600px]">
-        {/* Current Goals Cards */}
-        <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+    <div className="space-y-4">
+      {/* Section Header with Add Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Target className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">커리어 목표</h2>
+        </div>
+        <Button variant="default" size="sm" onClick={handleAddNewGoal}>
+          <Target className="w-4 h-4 mr-2" />새 목표
+        </Button>
+      </div>
+
+      {/* Current Goals Cards */}
+      <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -281,10 +278,10 @@ export function GoalsTab() {
               </p>
             </div>
           )}
-        </div>
+      </div>
 
-        {/* Goal History */}
-        <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+      {/* Goal History */}
+      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
           <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
@@ -371,7 +368,6 @@ export function GoalsTab() {
             </CollapsibleContent>
           </div>
         </Collapsible>
-      </div>
 
       {/* Goals Edit Dialog */}
       {editingGoalId && (
