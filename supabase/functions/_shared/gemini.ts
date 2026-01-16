@@ -54,16 +54,12 @@ type LovableLikeResponse = {
 };
 
 function normalizeModel(model?: string): string {
-  const fallback = 'gemini-1.5-flash';
-  if (!model) return fallback;
-  const cleaned = model.includes('/') ? model.split('/').pop() ?? model : model;
-
-  if (cleaned.includes('gemini-2.5-pro')) return 'gemini-1.5-pro';
-  if (cleaned.includes('gemini-2.5-flash')) return 'gemini-1.5-flash';
-  if (cleaned.includes('gemini-1.5-pro')) return 'gemini-1.5-pro';
-  if (cleaned.includes('gemini-1.5-flash')) return 'gemini-1.5-flash';
-
-  return fallback;
+  const envModel = Deno.env.get('GEMINI_MODEL');
+  if (envModel && envModel.trim()) {
+    return envModel.trim();
+  }
+  if (!model) return 'gemini-3-flash-preview';
+  return model.includes('/') ? model.split('/').pop() ?? model : model;
 }
 
 function extractSystemText(messages: OpenAIMessage[]): string | null {
@@ -102,6 +98,24 @@ function convertMessageContent(content: OpenAIMessage['content']): GeminiPart[] 
   });
 }
 
+function sanitizeSchema(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeSchema);
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, val] of entries) {
+      if (key === 'additionalProperties' || key === 'nullable') {
+        continue;
+      }
+      cleaned[key] = sanitizeSchema(val);
+    }
+    return cleaned;
+  }
+  return value;
+}
+
 function buildGeminiRequest(payload: LovableChatPayload): { model: string; request: GeminiRequest } {
   const model = normalizeModel(payload.model);
   const systemText = extractSystemText(payload.messages);
@@ -128,7 +142,7 @@ function buildGeminiRequest(payload: LovableChatPayload): { model: string; reque
       .map((tool) => ({
         name: tool.function.name,
         description: tool.function.description,
-        parameters: tool.function.parameters,
+        parameters: sanitizeSchema(tool.function.parameters),
       }));
 
     if (functionDeclarations.length) {

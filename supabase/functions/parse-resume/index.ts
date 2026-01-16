@@ -27,7 +27,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        JSON.stringify({ success: false, error: '로그인이 필요합니다. 다시 로그인한 뒤 재시도해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -42,7 +42,7 @@ serve(async (req) => {
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid token' }),
+        JSON.stringify({ success: false, error: '인증이 만료되었습니다. 다시 로그인해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -58,8 +58,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Invalid input data',
-          details: validationResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`)
+          error: '요청 형식이 올바르지 않습니다. 입력 값을 확인하고 다시 시도해주세요.',
+          details: validationResult.error.issues.map(i => `${i.path.join('.')}: 입력 값을 확인해주세요.`)
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -69,7 +69,7 @@ serve(async (req) => {
 
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
+      throw new Error('AI 설정이 완료되지 않았습니다. 잠시 후 다시 시도하거나 고객센터에 문의해주세요.');
     }
 
     const hasText = typeof resumeText === 'string' && resumeText.trim().length > 0;
@@ -81,7 +81,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           experiences: [],
-          message: 'No resume content to parse'
+          message: '이력서 내용이 없습니다. 텍스트가 포함된 파일을 업로드하거나 이미지가 잘 들어갔는지 확인해주세요.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -100,7 +100,7 @@ serve(async (req) => {
         if (resp.status === 402) {
           return { error: true, status: 402, message: 'AI 사용량이 부족합니다. 워크스페이스 크레딧을 확인해주세요.' };
         }
-        return { error: true, status: 500, message: 'AI 분석 실패' };
+        return { error: true, status: 500, message: 'AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요.' };
       }
 
       return resp;
@@ -372,8 +372,11 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error parsing resume:', error);
+    const fallbackMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    const safeMessage =
+      error instanceof Error && /[가-힣]/.test(error.message) ? error.message : fallbackMessage;
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ success: false, error: safeMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

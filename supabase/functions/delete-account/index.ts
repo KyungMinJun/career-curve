@@ -16,7 +16,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "No authorization header" }),
+        JSON.stringify({ error: "로그인이 필요합니다. 다시 로그인한 뒤 재시도해주세요." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -25,7 +25,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     if (!token) {
       return new Response(
-        JSON.stringify({ error: "No token provided" }),
+        JSON.stringify({ error: "인증 정보가 없습니다. 다시 로그인한 뒤 재시도해주세요." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -44,7 +44,7 @@ serve(async (req) => {
     if (userError || !user) {
       console.error("Error getting user:", userError);
       return new Response(
-        JSON.stringify({ error: "Invalid user" }),
+        JSON.stringify({ error: "사용자 인증에 실패했습니다. 다시 로그인해주세요." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -68,7 +68,7 @@ serve(async (req) => {
     if (deleteError) {
       console.error("Error deleting user:", deleteError);
       return new Response(
-        JSON.stringify({ error: "Failed to delete account" }),
+        JSON.stringify({ error: "계정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -76,13 +76,16 @@ serve(async (req) => {
     console.log("User deleted successfully:", user.id);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Account deleted successfully" }),
+      JSON.stringify({ success: true, message: "계정이 정상적으로 삭제되었습니다." }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in delete-account:", error);
+    const fallbackMessage = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+    const safeMessage =
+      error instanceof Error && /[가-힣]/.test(error.message) ? error.message : fallbackMessage;
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: safeMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
