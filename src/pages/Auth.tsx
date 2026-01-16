@@ -111,6 +111,7 @@ export default function Auth() {
           // Check if email confirmation is required
           if (data?.user && !data.session) {
             toast.success('이메일로 확인 링크를 보냈습니다. 이메일을 확인해주세요.');
+            setMode('login');
           } else {
             toast.success('회원가입이 완료되었습니다');
             navigate('/');
