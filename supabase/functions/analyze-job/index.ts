@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { callGeminiFromLovable, normalizeGeminiToLovable } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -220,7 +221,7 @@ serve(async (req) => {
     const formattedUrl = urlValidation.url!;
 
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
     if (!firecrawlApiKey) {
       console.error('FIRECRAWL_API_KEY not configured');
@@ -230,8 +231,8 @@ serve(async (req) => {
       );
     }
 
-    if (!lovableApiKey) {
-      console.error('LOVABLE_API_KEY not configured');
+    if (!geminiApiKey) {
+      console.error('GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'AI not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -353,7 +354,7 @@ serve(async (req) => {
       pageContent = scrapeData.data?.markdown || '';
       pageTitle = scrapeData.data?.metadata?.title || pageTitle;
     }
-    
+
     console.log('Final content length:', pageContent.length);
     
     if (!pageContent || pageContent.length < 50) {
@@ -397,65 +398,58 @@ Extract and return:
 - fitScore: number 1-5
 `;
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Page title: ${pageTitle}\n\nJob posting content:\n${pageContent.substring(0, 15000)}` }
-        ],
-         tools: [
-           {
-             type: "function",
-             function: {
-               name: "extract_job_posting",
-               description: "Extract structured job posting information with evidence",
-               parameters: {
-                 type: "object",
-                 properties: {
-                   language: { type: "string", enum: ["ko", "en"] },
-                   companyName: { type: "string" },
-                   title: { type: "string" },
-                   position: { type: "string" },
-                   minExperience: { type: "string", nullable: true },
-                   minExperienceEvidence: { type: "string" },
-                   workType: { type: "string", nullable: true },
-                   workTypeEvidence: { type: "string" },
-                   location: { type: "string", nullable: true },
-                   locationEvidence: { type: "string" },
-                   visaSponsorship: { type: "boolean", nullable: true },
-                   visaSponsorshipEvidence: { type: "string" },
-                   summary: { type: "string" },
-                   keyCompetencies: {
-                     type: "array",
-                     items: {
-                       type: "object",
-                       properties: {
-                         title: { type: "string" },
-                         description: { type: "string" }
-                       },
-                       required: ["title", "description"]
+    const aiResponse = await callGeminiFromLovable({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Page title: ${pageTitle}\n\nJob posting content:\n${pageContent.substring(0, 15000)}` }
+      ],
+       tools: [
+         {
+           type: "function",
+           function: {
+             name: "extract_job_posting",
+             description: "Extract structured job posting information with evidence",
+             parameters: {
+               type: "object",
+               properties: {
+                 language: { type: "string", enum: ["ko", "en"] },
+                 companyName: { type: "string" },
+                 title: { type: "string" },
+                 position: { type: "string" },
+                 minExperience: { type: "string", nullable: true },
+                 minExperienceEvidence: { type: "string" },
+                 workType: { type: "string", nullable: true },
+                 workTypeEvidence: { type: "string" },
+                 location: { type: "string", nullable: true },
+                 locationEvidence: { type: "string" },
+                 visaSponsorship: { type: "boolean", nullable: true },
+                 visaSponsorshipEvidence: { type: "string" },
+                 summary: { type: "string" },
+                 keyCompetencies: {
+                   type: "array",
+                   items: {
+                     type: "object",
+                     properties: {
+                       title: { type: "string" },
+                       description: { type: "string" }
                      },
-                     minItems: 5,
-                     maxItems: 5
+                     required: ["title", "description"]
                    },
-                   companyScore: { type: "number" },
-                   fitScore: { type: "number" }
+                   minItems: 5,
+                   maxItems: 5
                  },
-                 required: ["language", "companyName", "title", "position", "summary", "keyCompetencies"],
-                 additionalProperties: false
-               }
+                 companyScore: { type: "number" },
+                 fitScore: { type: "number" }
+               },
+               required: ["language", "companyName", "title", "position", "summary", "keyCompetencies"],
+               additionalProperties: false
              }
            }
-         ],
-        tool_choice: { type: "function", function: { name: "extract_job_posting" } }
-      }),
-    });
+         }
+       ],
+      tool_choice: { type: "function", function: { name: "extract_job_posting" } }
+    }, geminiApiKey);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
@@ -480,12 +474,13 @@ Extract and return:
       );
     }
 
-    const aiData = await aiResponse.json();
+    const aiDataRaw = await aiResponse.json();
+    const aiData = normalizeGeminiToLovable(aiDataRaw);
     console.log('AI response received');
 
     // Extract the structured data from tool call
     let jobData = null;
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
     
     if (toolCall?.function?.arguments) {
       try {

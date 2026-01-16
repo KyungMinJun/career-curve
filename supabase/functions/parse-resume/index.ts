@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { callGeminiFromLovable, normalizeGeminiToLovable } from "../_shared/gemini.ts";
+import type { LovableChatPayload } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,9 +67,9 @@ serve(async (req) => {
 
     const { fileName, resumeId, resumeText, pageImages } = validationResult.data;
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     const hasText = typeof resumeText === 'string' && resumeText.trim().length > 0;
@@ -85,15 +87,8 @@ serve(async (req) => {
       );
     }
 
-    const callGateway = async (payload: Record<string, unknown>) => {
-      const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+    const callGateway = async (payload: LovableChatPayload) => {
+      const resp = await callGeminiFromLovable(payload, geminiApiKey);
 
       if (!resp.ok) {
         const t = await resp.text();
@@ -183,7 +178,8 @@ serve(async (req) => {
           continue;
         }
 
-        const ocrAiData = await (ocrResult as Response).json();
+        const ocrAiDataRaw = await (ocrResult as Response).json();
+        const ocrAiData = normalizeGeminiToLovable(ocrAiDataRaw);
         const content = ocrAiData?.choices?.[0]?.message?.content;
         const pageText = typeof content === 'string' ? content : '';
 
@@ -320,7 +316,8 @@ serve(async (req) => {
       );
     }
 
-    const aiData = await (extractionResult as Response).json();
+    const aiDataRaw = await (extractionResult as Response).json();
+    const aiData = normalizeGeminiToLovable(aiDataRaw);
     console.log('Extraction AI response received');
 
     let experiences: any[] = [];

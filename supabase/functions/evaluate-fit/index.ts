@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { callGeminiFromLovable, normalizeGeminiToLovable } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -81,9 +82,9 @@ serve(async (req) => {
 
     const { keyCompetencies, experiences, minExperience } = validationResult.data;
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     const experiencesSummary = experiences.map((exp: any) => 
@@ -139,56 +140,49 @@ ${experiencesSummary}
 
     console.log('Evaluating fit with AI');
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "evaluate_fit",
-              description: "Evaluate candidate's minimum requirements and competency fit",
-              parameters: {
-                type: "object",
-                properties: {
-                  minimumRequirements: {
+    const aiResponse = await callGeminiFromLovable({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "evaluate_fit",
+            description: "Evaluate candidate's minimum requirements and competency fit",
+            parameters: {
+              type: "object",
+              properties: {
+                minimumRequirements: {
+                  type: "object",
+                  properties: {
+                    experienceMet: { type: "string", enum: ["충족", "미충족", "판단 불가"], description: "Whether minimum experience requirement is met" },
+                    reason: { type: "string", description: "Brief explanation in Korean" }
+                  },
+                  required: ["experienceMet", "reason"]
+                },
+                evaluations: {
+                  type: "array",
+                  items: {
                     type: "object",
                     properties: {
-                      experienceMet: { type: "string", enum: ["충족", "미충족", "판단 불가"], description: "Whether minimum experience requirement is met" },
-                      reason: { type: "string", description: "Brief explanation in Korean" }
+                      competencyIndex: { type: "number", description: "0-based index of the competency" },
+                      score: { type: "number", description: "Score 1-5" },
+                      evaluation: { type: "string", description: "Evaluation comment in Korean" }
                     },
-                    required: ["experienceMet", "reason"]
-                  },
-                  evaluations: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        competencyIndex: { type: "number", description: "0-based index of the competency" },
-                        score: { type: "number", description: "Score 1-5" },
-                        evaluation: { type: "string", description: "Evaluation comment in Korean" }
-                      },
-                      required: ["competencyIndex", "score", "evaluation"]
-                    }
+                    required: ["competencyIndex", "score", "evaluation"]
                   }
-                },
-                required: ["minimumRequirements", "evaluations"]
-              }
+                }
+              },
+              required: ["minimumRequirements", "evaluations"]
             }
           }
-        ],
-        tool_choice: { type: "function", function: { name: "evaluate_fit" } }
-      }),
-    });
+        }
+      ],
+      tool_choice: { type: "function", function: { name: "evaluate_fit" } }
+    }, geminiApiKey);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
@@ -196,12 +190,13 @@ ${experiencesSummary}
       throw new Error('AI analysis failed');
     }
 
-    const aiData = await aiResponse.json();
+    const aiDataRaw = await aiResponse.json();
+    const aiData = normalizeGeminiToLovable(aiDataRaw);
     console.log('AI response received');
 
     let evaluations: any[] = [];
     let minimumRequirements = { experienceMet: "판단 불가", reason: "평가 실패" };
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
     
     if (toolCall?.function?.arguments) {
       try {
