@@ -69,14 +69,14 @@ function validateUrl(urlString: string): { valid: boolean; error?: string; url?:
     
     // Only allow HTTP/HTTPS protocols
     if (!['https:', 'http:'].includes(parsed.protocol)) {
-      return { valid: false, error: '지원되지 않는 URL 형식입니다.' };
+      return { valid: false, error: '지원되지 않는 URL 형식입니다. http 또는 https URL을 입력해주세요.' };
     }
     
     const hostname = parsed.hostname.toLowerCase();
     
     // Block localhost
     if (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname)) {
-      return { valid: false, error: '유효하지 않은 URL입니다.' };
+      return { valid: false, error: '유효하지 않은 URL입니다. 올바른 채용 공고 URL을 입력해주세요.' };
     }
     
     // Block private IP ranges
@@ -89,7 +89,7 @@ function validateUrl(urlString: string): { valid: boolean; error?: string; url?:
       hostname.match(/^fc00:/i) || // IPv6 unique local
       hostname.match(/^fd[0-9a-f]{2}:/i) // IPv6 unique local
     ) {
-      return { valid: false, error: '유효하지 않은 URL입니다.' };
+      return { valid: false, error: '유효하지 않은 URL입니다. 올바른 채용 공고 URL을 입력해주세요.' };
     }
     
     // Check if domain is in allowlist
@@ -106,12 +106,12 @@ function validateUrl(urlString: string): { valid: boolean; error?: string; url?:
     
     // URL length check (already validated by Zod, but double-check)
     if (formattedUrl.length > 2000) {
-      return { valid: false, error: 'URL이 너무 깁니다.' };
+      return { valid: false, error: 'URL이 너무 깁니다. URL을 줄여 다시 시도해주세요.' };
     }
     
     return { valid: true, url: formattedUrl };
   } catch {
-    return { valid: false, error: '올바른 URL 형식이 아닙니다.' };
+    return { valid: false, error: '올바른 URL 형식이 아닙니다. 전체 URL을 확인해주세요.' };
   }
 }
 
@@ -125,7 +125,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        JSON.stringify({ success: false, error: '로그인이 필요합니다. 다시 로그인한 뒤 재시도해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -140,7 +140,7 @@ serve(async (req) => {
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid token' }),
+        JSON.stringify({ success: false, error: '인증이 만료되었습니다. 다시 로그인해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -157,14 +157,14 @@ serve(async (req) => {
     if (subError || !subscription) {
       console.error('Subscription fetch error:', subError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Subscription not found' }),
+        JSON.stringify({ success: false, error: '구독 정보를 찾을 수 없습니다. 결제 상태를 확인하거나 고객센터에 문의해주세요.' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (subscription.ai_credits_remaining < 1) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Insufficient AI credits' }),
+        JSON.stringify({ success: false, error: 'AI 크레딧이 부족합니다. 플랜을 업그레이드하거나 크레딧을 충전해주세요.' }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -183,7 +183,7 @@ serve(async (req) => {
     if (creditError || updatedCount === 0) {
       console.error('Credit deduction failed (race condition):', creditError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Credit deduction failed. Please try again.' }),
+        JSON.stringify({ success: false, error: '크레딧 차감에 실패했습니다. 잠시 후 다시 시도해주세요.' }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -199,8 +199,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Invalid input data',
-          details: validationResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`)
+          error: '요청 형식이 올바르지 않습니다. 입력 값을 확인하고 다시 시도해주세요.',
+          details: validationResult.error.issues.map(i => `${i.path.join('.')}: 입력 값을 확인해주세요.`)
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -226,7 +226,7 @@ serve(async (req) => {
     if (!firecrawlApiKey) {
       console.error('FIRECRAWL_API_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'Firecrawl not configured' }),
+        JSON.stringify({ success: false, error: '페이지 분석 설정이 완료되지 않았습니다. 잠시 후 다시 시도하거나 고객센터에 문의해주세요.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -234,7 +234,7 @@ serve(async (req) => {
     if (!geminiApiKey) {
       console.error('GEMINI_API_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'AI not configured' }),
+        JSON.stringify({ success: false, error: 'AI 설정이 완료되지 않았습니다. 잠시 후 다시 시도하거나 고객센터에 문의해주세요.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -346,7 +346,7 @@ serve(async (req) => {
         }
         
         return new Response(
-          JSON.stringify({ success: false, error: 'Failed to scrape URL' }),
+          JSON.stringify({ success: false, error: '페이지 내용을 가져오지 못했습니다. URL을 확인하거나 공고 내용을 직접 입력해주세요.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -457,19 +457,19 @@ Extract and return:
       
       if (aiResponse.status === 429) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (aiResponse.status === 402) {
         return new Response(
-          JSON.stringify({ success: false, error: 'AI credits required. Please add credits.' }),
+          JSON.stringify({ success: false, error: 'AI 크레딧이 필요합니다. 크레딧을 충전한 뒤 다시 시도해주세요.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       return new Response(
-        JSON.stringify({ success: false, error: 'AI analysis failed' }),
+        JSON.stringify({ success: false, error: 'AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -518,8 +518,11 @@ Extract and return:
 
   } catch (error) {
     console.error('Error in analyze-job function:', error);
+    const fallbackMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    const safeMessage =
+      error instanceof Error && /[가-힣]/.test(error.message) ? error.message : fallbackMessage;
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ success: false, error: safeMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

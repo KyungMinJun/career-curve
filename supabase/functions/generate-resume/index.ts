@@ -92,7 +92,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: '로그인이 필요합니다. 다시 로그인한 뒤 재시도해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -107,7 +107,7 @@ serve(async (req) => {
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: '인증이 만료되었습니다. 다시 로그인해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -124,14 +124,14 @@ serve(async (req) => {
     if (subError || !subscription) {
       console.error('Subscription fetch error:', subError);
       return new Response(
-        JSON.stringify({ error: 'Subscription not found' }),
+        JSON.stringify({ error: '구독 정보를 찾을 수 없습니다. 결제 상태를 확인하거나 고객센터에 문의해주세요.' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (subscription.resume_credits_remaining < 1) {
       return new Response(
-        JSON.stringify({ error: 'Insufficient resume credits' }),
+        JSON.stringify({ error: '이력서 크레딧이 부족합니다. 플랜을 업그레이드하거나 크레딧을 충전해주세요.' }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -150,7 +150,7 @@ serve(async (req) => {
     if (creditError || updatedCount === 0) {
       console.error('Credit deduction failed (race condition):', creditError);
       return new Response(
-        JSON.stringify({ error: 'Credit deduction failed. Please try again.' }),
+        JSON.stringify({ error: '크레딧 차감에 실패했습니다. 잠시 후 다시 시도해주세요.' }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -165,8 +165,8 @@ serve(async (req) => {
       console.error('Validation error:', validationResult.error.issues);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid input data',
-          details: validationResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`)
+          error: '요청 형식이 올바르지 않습니다. 입력 값을 확인하고 다시 시도해주세요.',
+          details: validationResult.error.issues.map(i => `${i.path.join('.')}: 입력 값을 확인해주세요.`)
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -191,7 +191,7 @@ serve(async (req) => {
 
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
     if (!geminiApiKey) {
-      throw new Error("GEMINI_API_KEY is not configured");
+      throw new Error("AI 설정이 완료되지 않았습니다. 잠시 후 다시 시도하거나 고객센터에 문의해주세요.");
     }
 
     // Build competency evaluation section for prompt
@@ -486,20 +486,20 @@ IMPORTANT: Do NOT use emojis in the resume body.`;
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), {
+        return new Response(JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required, please add funds." }), {
+        return new Response(JSON.stringify({ error: "결제가 필요합니다. 플랜을 확인하거나 결제를 완료한 뒤 다시 시도해주세요." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
+      throw new Error("AI 요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
     }
 
     const dataRaw = await response.json();
@@ -527,10 +527,13 @@ IMPORTANT: Do NOT use emojis in the resume body.`;
     );
   } catch (error) {
     console.error("Error generating resume:", error);
+    const fallbackMessage = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+    const safeMessage =
+      error instanceof Error && /[가-힣]/.test(error.message) ? error.message : fallbackMessage;
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: safeMessage,
       }),
       {
         status: 500,

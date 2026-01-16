@@ -20,7 +20,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ success: false, error: 'No authorization header' }),
+        JSON.stringify({ success: false, error: '로그인이 필요합니다. 다시 로그인한 뒤 재시도해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -35,7 +35,7 @@ serve(async (req) => {
     
     if (authError || !requestingUser) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid token' }),
+        JSON.stringify({ success: false, error: '인증이 만료되었습니다. 다시 로그인해주세요.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -50,7 +50,7 @@ serve(async (req) => {
 
     if (roleError || !roleData) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Access denied. Admin role required.' }),
+        JSON.stringify({ success: false, error: '접근 권한이 없습니다. 관리자 계정으로 다시 시도해주세요.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -69,7 +69,7 @@ serve(async (req) => {
       });
       
       if (usersError) {
-        throw new Error(`Failed to fetch users: ${usersError.message}`);
+        throw new Error('사용자 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
       }
 
       console.log(`Page ${page}: fetched ${authUsers?.length || 0} users`);
@@ -96,7 +96,9 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('Admin users error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const fallbackMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    const errorMessage =
+      error instanceof Error && /[가-힣]/.test(error.message) ? error.message : fallbackMessage;
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
