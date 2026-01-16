@@ -1,73 +1,99 @@
-# Welcome to your Lovable project
+# 🚀 Curve (커브)
+> **커리어를 쉽고, 효과적으로**  
+> 경력직 이직 준비를 위한 AI 기반 올인원 플랫폼  
+> 
+> 👉 **[서비스 바로가기](https://www.curve-ai.click/)**
 
-## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+<br/>
 
-## How can I edit this code?
+## 📖 프로젝트 소개
 
-There are several ways of editing your application.
+**Curve**는 복잡하고 막막한 이직 준비 과정을 체계적으로 관리해주는 **웹 애플리케이션**입니다.  
+수많은 채용 공고를 일일이 관리하기 힘들고, 매번 회사에 맞춰 이력서를 수정하는 번거로움에 지친 구직자들을 위해 탄생했습니다.
 
-**Use Lovable**
+AI 기술을 활용해 채용 공고를 분석하고, 당신의 경험과 매칭하여 **'합격률을 높이는 전략'**을 제시합니다.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+<br/>
 
-Changes made via Lovable will be committed automatically to this repo.
+## 💡 해결하고자 하는 문제
 
-**Use your preferred IDE**
+- **파편화된 정보**: 채용 사이트마다 흩어진 공고, 엑셀로 관리하는 지원 현황의 불편함
+- **맞춤 전략의 부재**: "내 경험이 이 공고에 맞을까?"에 대한 객관적 판단의 어려움
+- **반복적인 작업**: 매번 공고에 맞춰 이력서를 수정하는 시간 소모
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**Curve는 이 모든 과정을 하나의 플랫폼에서 해결합니다.**
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+<br/>
 
-Follow these steps:
+## ✨ 주요 기능
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 1. 🤖 스마트 공고 분석
+*   **URL 만으로 자동 분석**: LinkedIn, 채용 사이트 URL을 입력하면 AI가 핵심 정보 자동 추출
+*   **핵심 역량 파악**: 채용 담당자가 중요하게 보는 5가지 핵심 역량을 AI가 도출
+*   **중복 방지**: 이미 등록된 공고는 스마트하게 필터링
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. 📊 칸반 보드 관리
+*   **한눈에 보는 지원 현황**: `지원검토` → `인터뷰` → `오퍼` → `합격` 등 상태별 카드를 드래그앤드롭으로 관리
+*   **상대적 우선순위**: AI가 분석한 '나와의 적합도'와 '회사 매력도'를 기반으로 공고별 우선순위 자동 계산
+*   **최소 요건 필터링**: 경력 연차 등 필수 요건 충족 여부를 AI가 1차 검증
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### 1. 🎯 목표 설정 (Goals)
+*   **나만의 이직 기준 수립**: 단순한 취업이 아닌, 명확한 커리어 패스 설계
+*   **회사 평가 기준 커스텀**: 연봉, 워라밸, 성장 가능성 등 내가 중요하게 생각하는 가치에 가중치 설정
+*   **히스토리 관리**: 과거의 이직 목표와 결과를 기록하여 성장 과정 추적
 
-**Edit a file directly in GitHub**
+### 3. 📝 AI 맞춤 솔루션 (Detail & Career)
+*   **적합도 평가**: 내 이력서와 공고를 대조하여 항목별 매칭 점수와 보완점 분석
+*   **맞춤 이력서 생성**: 공고의 핵심 키워드를 반영하여 합격률을 높이는 이력서 초안 자동 생성
+*   **이력서 파싱**: PDF 이력서를 업로드하면 경력과 프로젝트를 자동으로 데이터화
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+<br/>
 
-**Use GitHub Codespaces**
+## 🛠 기술 스택
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Frontend
+*   **Core**: React 18, TypeScript, Vite
+*   **Style**: Tailwind CSS, shadcn/ui (Clean & Minimal Design)
+*   **State**: Zustand (LocalStorage Persistence)
 
-## What technologies are used for this project?
+### Backend & Infrastructure
+*   **Platform**: Supabase
+*   **Database**: PostgreSQL
+*   **Function**: Edge Functions (Deno)
+*   **Auth**: Supabase Auth
 
-This project is built with:
+### AI & External API
+*   **Model**: Google Gemini 2.5 Flash
+*   **Scraping**: Firecrawl API
+*   **Features**: `analyze-job`, `parse-resume`, `generate-resume`, `evaluate-fit`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+<br/>
 
-## How can I deploy this project?
+## 🔄 User Flow
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### 1. 초기 세팅
+`회원가입/로그인` → `목표 설정` → `이력서 업로드`
 
-## Can I connect a custom domain to my Lovable project?
+### 2. 공고 분석
+`채용공고 URL 입력` → `AI 자동 분석 및 정보 추출`
 
-Yes, you can!
+### 3. 전략 수립
+`보드 등록` → `AI 적합도 평가` 및 `최소 요건 검토`
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 4. 실전 지원
+`맞춤 이력서 생성` → `입사 지원` → `서류/면접 단계별 관리`
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+<br/>
+
+## 🛣 로드맵
+
+*   **Phase 1 (Current)**: 핵심 사이클 완성 (목표-분석-지원), AI 정밀도 향상, 소셜 로그인
+*   **Phase 2**: 실시간 데이터 동기화, 알림 시스템
+*   **Phase 3**: 면접 AI 코칭, 기업 리뷰 통합, 팀 협업 기능
+
+<br/>
+
+---
+*Created by Curve Team*
