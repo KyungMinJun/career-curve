@@ -94,7 +94,6 @@ export function CareerTab() {
     "사용자";
   const userNameKo = user?.user_metadata?.name_ko || "";
   const userNameEn = user?.user_metadata?.name_en || "";
-  const [resumesOpen, setResumesOpen] = useState(true);
   const [workOpen, setWorkOpen] = useState(true);
   const [projectOpen, setProjectOpen] = useState(true);
   const [tailoredOpen, setTailoredOpen] = useState(true);
@@ -393,50 +392,45 @@ export function CareerTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="경력" subtitle="이력서와 경험을 관리하세요" />
+      <PageHeader
+        title="경력"
+        subtitle="목표를 세우고 이력서와 경력을 관리하세요"
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-20 scrollbar-hide">
         {/* Responsive two-column layout: Goals (left) + Career (right) on desktop, stacked on mobile */}
         <div className="flex flex-col lg:flex-row gap-6 max-w-[1400px] mx-auto">
           {/* Left column: Goals */}
-          <div className="w-full lg:w-1/2">
+          <div className="w-full lg:w-1/2 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-primary rounded-full" />
+              <h2 className="text-xl font-bold text-foreground">목표 관리</h2>
+            </div>
             <GoalsSection />
           </div>
 
+          {/* Divider - horizontal on mobile, vertical on desktop */}
+          <div className="w-full h-px bg-border lg:w-px lg:h-auto lg:self-stretch" />
+
           {/* Right column: Career content */}
           <div className="w-full lg:w-1/2 space-y-4">
-        {/* Resumes Section */}
-        <Collapsible open={resumesOpen} onOpenChange={setResumesOpen}>
-          <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
-                <File className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">이력서</h2>
-                <Badge variant="secondary" className="text-xs">
-                  {resumes.length}
-                </Badge>
-              </div>
-              {resumesOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                />
-
-                <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-primary rounded-full" />
+              <h2 className="text-xl font-bold text-foreground">
+                이력서 & 경험 관리
+              </h2>
+            </div>
+            {/* Resumes Section */}
+            <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <File className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-foreground">이력서</h2>
+                  </div>
                   <Button
-                    variant="outline"
-                    className="flex-1 border-dashed"
+                    variant="default"
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                   >
@@ -447,63 +441,42 @@ export function CareerTab() {
                     )}
                     업로드 (PDF)
                   </Button>
-
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    disabled={experiences.length === 0}
-                    onClick={() => setShowResumePreview(true)}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    미리보기
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    disabled={isExporting || experiences.length === 0}
-                    onClick={async () => {
-                      setIsExporting(true);
-                      try {
-                        await exportResumeToDocx({ userName, experiences });
-                        toast.success("이력서가 다운로드되었습니다");
-                      } catch (err) {
-                        console.error("Export error:", err);
-                        toast.error("이력서 추출에 실패했습니다");
-                      } finally {
-                        setIsExporting(false);
-                      }
-                    }}
-                  >
-                    {isExporting ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4 mr-2" />
-                    )}
-                    추출 (DOCX)
-                  </Button>
                 </div>
+              </div>
 
-                {resumes.map((resume) => (
-                  <div
-                    key={resume.id}
-                    className="bg-secondary/30 rounded-lg p-3 group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <File className="w-4 h-4 text-primary shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {resume.fileName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(resume.uploadedAt).toLocaleDateString(
-                              "ko-KR"
-                            )}
-                          </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+
+              {resumes.length > 0 ? (
+                <div className="p-4 space-y-3">
+                  {resumes.map((resume) => (
+                    <div
+                      key={resume.id}
+                      className="bg-secondary/30 rounded-lg p-4 space-y-3"
+                    >
+                      {/* 파일 정보 헤더 */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <File className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {resume.fileName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(resume.uploadedAt).toLocaleDateString(
+                                "ko-KR"
+                              )}{" "}
+                              업로드
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
                         <Badge
                           variant={
                             resume.parseStatus === "success"
@@ -511,198 +484,249 @@ export function CareerTab() {
                               : "secondary"
                           }
                           className={cn(
-                            "text-xs",
+                            "text-xs shrink-0",
                             resume.parseStatus === "pending" && "animate-pulse"
                           )}
                         >
                           {resume.parseStatus === "pending" && "분석 중"}
-                          {resume.parseStatus === "success" && "완료"}
-                          {resume.parseStatus === "fail" && "실패"}
+                          {resume.parseStatus === "success" && "분석 완료"}
+                          {resume.parseStatus === "fail" && "분석 실패"}
                         </Badge>
+                      </div>
+
+                      {/* 에러 메시지 */}
+                      {resume.parseError && (
+                        <div className="bg-destructive/10 text-destructive text-xs rounded-md px-3 py-2">
+                          {resume.parseError}
+                        </div>
+                      )}
+
+                      {/* 액션 버튼들 - 2x2 그리드 */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-7 h-7"
-                          onClick={() => setLogResumeId(resume.id)}
-                          aria-label="파싱 로그 보기"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs"
+                          disabled={experiences.length === 0}
+                          onClick={() => setShowResumePreview(true)}
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5 mr-1.5" />
+                          미리보기
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-7 h-7 text-destructive"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs"
+                          disabled={isExporting || experiences.length === 0}
+                          onClick={async () => {
+                            setIsExporting(true);
+                            try {
+                              await exportResumeToDocx({
+                                userName,
+                                experiences,
+                              });
+                              toast.success("이력서가 다운로드되었습니다");
+                            } catch (err) {
+                              console.error("Export error:", err);
+                              toast.error("이력서 추출에 실패했습니다");
+                            } finally {
+                              setIsExporting(false);
+                            }
+                          }}
+                        >
+                          {isExporting ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          DOCX 추출
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs"
+                          onClick={() => setLogResumeId(resume.id)}
+                        >
+                          <FileText className="w-3.5 h-3.5 mr-1.5" />
+                          인식 로그
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs text-destructive hover:text-destructive"
                           onClick={() => removeResume(resume.id)}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                          삭제
                         </Button>
                       </div>
                     </div>
-                    {resume.parseError && (
-                      <p className="text-xs text-warning mt-2">
-                        {resume.parseError}
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground text-sm font-medium">
+                    업로드된 이력서가 없습니다
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PDF 파일을 업로드하면 자동으로 분석됩니다
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Work Experience Section */}
+            <Collapsible open={workOpen} onOpenChange={setWorkOpen}>
+              <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+                <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-foreground">경력</h2>
+                    <Badge variant="secondary" className="text-xs">
+                      {workExperiences.length}
+                    </Badge>
+                  </div>
+                  {workOpen ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-3">
+                    {workExperiences.map((exp) => (
+                      <ExperienceCard
+                        key={exp.id}
+                        experience={exp}
+                        onEdit={() => setEditingExperience(exp.id)}
+                        onDelete={() => removeExperience(exp.id)}
+                      />
+                    ))}
+
+                    {workExperiences.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        이력서를 업로드하거나 직접 추가해주세요
+                      </p>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleAddExperience("work")}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      경력 추가
+                    </Button>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Project Section */}
+            <Collapsible open={projectOpen} onOpenChange={setProjectOpen}>
+              <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+                <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
+                  <div className="flex items-center gap-2">
+                    <FolderKanban className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-foreground">
+                      Selected Projects
+                    </h2>
+                    <Badge variant="secondary" className="text-xs">
+                      {projectExperiences.length}
+                    </Badge>
+                  </div>
+                  {projectOpen ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-3">
+                    {projectExperiences.map((exp) => (
+                      <ExperienceCard
+                        key={exp.id}
+                        experience={exp}
+                        onEdit={() => setEditingExperience(exp.id)}
+                        onDelete={() => removeExperience(exp.id)}
+                      />
+                    ))}
+
+                    {projectExperiences.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        이력서를 업로드하거나 직접 추가해주세요
+                      </p>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleAddExperience("project")}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      프로젝트 추가
+                    </Button>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Tailored Resumes Section - 공고별 이력서 */}
+            <Collapsible open={tailoredOpen} onOpenChange={setTailoredOpen}>
+              <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+                <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
+                  <div className="flex items-center gap-2">
+                    <FileCheck className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-foreground">
+                      공고별 이력서
+                    </h2>
+                    <Badge variant="secondary" className="text-xs">
+                      {tailoredResumes.length}
+                    </Badge>
+                  </div>
+                  {tailoredOpen ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-3">
+                    {[...tailoredResumes]
+                      .sort(
+                        (a, b) =>
+                          new Date(b.createdAt).getTime() -
+                          new Date(a.createdAt).getTime()
+                      )
+                      .map((resume) => (
+                        <TailoredResumeCard
+                          key={resume.id}
+                          resume={resume}
+                          onPreview={() => setPreviewingTailoredResume(resume)}
+                          onEdit={() => setEditingTailoredResume(resume)}
+                          onDelete={() => removeTailoredResume(resume.id)}
+                          userName={userName}
+                        />
+                      ))}
+
+                    {tailoredResumes.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        보드에서 공고 카드를 선택 후 &quot;맞춤 이력서
+                        만들기&quot;로 생성할 수 있습니다
                       </p>
                     )}
                   </div>
-                ))}
-
-                {resumes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    이력서를 업로드하면 자동으로 분석됩니다
-                  </p>
-                )}
+                </CollapsibleContent>
               </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        {/* Work Experience Section */}
-        <Collapsible open={workOpen} onOpenChange={setWorkOpen}>
-          <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">경력</h2>
-                <Badge variant="secondary" className="text-xs">
-                  {workExperiences.length}
-                </Badge>
-              </div>
-              {workOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                {workExperiences.map((exp) => (
-                  <ExperienceCard
-                    key={exp.id}
-                    experience={exp}
-                    onEdit={() => setEditingExperience(exp.id)}
-                    onDelete={() => removeExperience(exp.id)}
-                  />
-                ))}
-
-                {workExperiences.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    이력서를 업로드하거나 직접 추가해주세요
-                  </p>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleAddExperience("work")}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  경력 추가
-                </Button>
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        {/* Project Section */}
-        <Collapsible open={projectOpen} onOpenChange={setProjectOpen}>
-          <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
-                <FolderKanban className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">
-                  Selected Projects
-                </h2>
-                <Badge variant="secondary" className="text-xs">
-                  {projectExperiences.length}
-                </Badge>
-              </div>
-              {projectOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                {projectExperiences.map((exp) => (
-                  <ExperienceCard
-                    key={exp.id}
-                    experience={exp}
-                    onEdit={() => setEditingExperience(exp.id)}
-                    onDelete={() => removeExperience(exp.id)}
-                  />
-                ))}
-
-                {projectExperiences.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    이력서를 업로드하거나 직접 추가해주세요
-                  </p>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleAddExperience("project")}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  프로젝트 추가
-                </Button>
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        {/* Tailored Resumes Section - 공고별 이력서 */}
-        <Collapsible open={tailoredOpen} onOpenChange={setTailoredOpen}>
-          <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">공고별 이력서</h2>
-                <Badge variant="secondary" className="text-xs">
-                  {tailoredResumes.length}
-                </Badge>
-              </div>
-              {tailoredOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                {[...tailoredResumes]
-                  .sort(
-                    (a, b) =>
-                      new Date(b.createdAt).getTime() -
-                      new Date(a.createdAt).getTime()
-                  )
-                  .map((resume) => (
-                    <TailoredResumeCard
-                      key={resume.id}
-                      resume={resume}
-                      onPreview={() => setPreviewingTailoredResume(resume)}
-                      onEdit={() => setEditingTailoredResume(resume)}
-                      onDelete={() => removeTailoredResume(resume.id)}
-                      userName={userName}
-                    />
-                  ))}
-
-                {tailoredResumes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    보드에서 공고 카드를 선택 후 &quot;맞춤 이력서
-                    만들기&quot;로 생성할 수 있습니다
-                  </p>
-                )}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
+            </Collapsible>
           </div>
           {/* End of right column (Career content) */}
         </div>

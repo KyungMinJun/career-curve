@@ -124,250 +124,238 @@ export function GoalsSection() {
 
   return (
     <div className="space-y-4">
-      {/* Section Header with Add Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Target className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">커리어 목표</h2>
-        </div>
-        <Button variant="default" size="sm" onClick={handleAddNewGoal}>
-          <Target className="w-4 h-4 mr-2" />새 목표
-        </Button>
-      </div>
-
       {/* Current Goals Cards */}
       <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">현재 목표</h2>
-                {activeGoals.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {activeGoals.length}
-                  </Badge>
-                )}
-              </div>
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              <h2 className="font-semibold text-foreground">현재 목표</h2>
+              {activeGoals.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeGoals.length}
+                </Badge>
+              )}
             </div>
+            <Button variant="default" size="sm" onClick={handleAddNewGoal}>
+              <Target className="w-4 h-4 mr-2" />새 목표
+            </Button>
           </div>
+        </div>
 
-          {activeGoals.length > 0 ? (
-            <div className="divide-y divide-border">
-              {activeGoals.map((goal) => {
-                const startDate = new Date(goal.startDate);
-                const daysSinceStart = Math.floor(
-                  (new Date().getTime() - startDate.getTime()) /
-                    (1000 * 60 * 60 * 24)
-                );
+        {activeGoals.length > 0 ? (
+          <div className="divide-y divide-border">
+            {activeGoals.map((goal) => {
+              const startDate = new Date(goal.startDate);
+              const daysSinceStart = Math.floor(
+                (new Date().getTime() - startDate.getTime()) /
+                  (1000 * 60 * 60 * 24)
+              );
 
-                return (
-                  <div key={goal.id} className="p-4 space-y-4">
-                    {/* Period Badge */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2">
-                        <Calendar className="w-4 h-4 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            목표 기간
-                          </p>
-                          <p className="text-sm font-medium text-foreground">
-                            {formatKoreanDate(goal.startDate)}~
-                          </p>
-                        </div>
+              return (
+                <div key={goal.id} className="p-4 space-y-4">
+                  {/* Period Badge */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          목표 기간
+                        </p>
+                        <p className="text-sm font-medium text-foreground">
+                          {formatKoreanDate(goal.startDate)}~
+                        </p>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {daysSinceStart}일째
-                      </Badge>
                     </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {daysSinceStart}일째
+                    </Badge>
+                  </div>
 
-                    {/* Reason */}
+                  {/* Reason */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                      이직 이유
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {goal.reason || "아직 입력되지 않았습니다"}
+                    </p>
+                    {goal.careerPath && (
+                      <p className="text-xs text-primary">{goal.careerPath}</p>
+                    )}
+                  </div>
+
+                  {/* Result */}
+                  {goal.result && (
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                        이직 이유
+                        결과
                       </p>
-                      <p className="text-sm text-foreground">
-                        {goal.reason || "아직 입력되지 않았습니다"}
-                      </p>
-                      {goal.careerPath && (
-                        <p className="text-xs text-primary">
-                          {goal.careerPath}
-                        </p>
-                      )}
+                      <p className="text-sm text-foreground">{goal.result}</p>
                     </div>
+                  )}
 
-                    {/* Result */}
-                    {goal.result && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                          결과
-                        </p>
-                        <p className="text-sm text-foreground">{goal.result}</p>
-                      </div>
-                    )}
-
-                    {/* Company Eval Criteria - Priority Order */}
+                  {/* Company Eval Criteria - Priority Order */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                      회사 평가 기준 (우선순위)
+                    </p>
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                        회사 평가 기준 (우선순위)
-                      </p>
-                      <div className="space-y-2">
-                        {[...goal.companyEvalCriteria]
-                          .sort((a, b) => b.weight - a.weight)
-                          .map((c, i) => (
-                            <div key={i} className="space-y-1">
-                              <div className="flex items-center gap-2 text-sm">
-                                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
-                                  {i + 1}
-                                </span>
-                                <span className="flex-1 text-foreground">
-                                  {c.name}
-                                </span>
-                                <div className="flex gap-0.5">
-                                  {[1, 2, 3, 4, 5].map((n) => (
-                                    <div
-                                      key={n}
-                                      className={cn(
-                                        "w-2 h-2 rounded-full",
-                                        n <= c.weight
-                                          ? "bg-primary"
-                                          : "bg-muted"
-                                      )}
-                                    />
-                                  ))}
-                                </div>
+                      {[...goal.companyEvalCriteria]
+                        .sort((a, b) => b.weight - a.weight)
+                        .map((c, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                                {i + 1}
+                              </span>
+                              <span className="flex-1 text-foreground">
+                                {c.name}
+                              </span>
+                              <div className="flex gap-0.5">
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                  <div
+                                    key={n}
+                                    className={cn(
+                                      "w-2 h-2 rounded-full",
+                                      n <= c.weight ? "bg-primary" : "bg-muted"
+                                    )}
+                                  />
+                                ))}
                               </div>
-                              {c.description && (
-                                <p className="text-xs text-muted-foreground ml-7">
-                                  {c.description}
-                                </p>
-                              )}
                             </div>
-                          ))}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => setEditingGoalId(goal.id)}
-                      >
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        수정
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={() => handleArchiveGoal(goal)}
-                      >
-                        <History className="w-4 h-4 mr-2" />
-                        기록으로
-                      </Button>
+                            {c.description && (
+                              <p className="text-xs text-muted-foreground ml-7">
+                                {c.description}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="p-8 text-center">
-              <p className="text-muted-foreground text-sm">현재 목표 없음</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                새 목표 버튼을 눌러 시작하세요
-              </p>
-            </div>
-          )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setEditingGoalId(goal.id)}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      수정
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => handleArchiveGoal(goal)}
+                    >
+                      <History className="w-4 h-4 mr-2" />
+                      기록으로
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground text-sm">현재 목표 없음</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              새 목표 버튼을 눌러 시작하세요
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Goal History */}
       <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-          <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-foreground">이전 기록</h2>
-                <Badge variant="secondary" className="text-xs">
-                  {goalHistory.length}
-                </Badge>
-              </div>
-              {historyOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+        <div className="bg-card rounded-xl border border-border card-shadow overflow-hidden">
+          <CollapsibleTrigger className="w-full flex items-center justify-between p-4">
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5 text-muted-foreground" />
+              <h2 className="font-semibold text-foreground">이전 기록</h2>
+              <Badge variant="secondary" className="text-xs">
+                {goalHistory.length}
+              </Badge>
+            </div>
+            {historyOpen ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="px-4 pb-4 space-y-3">
+              {goalHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  아직 기록이 없습니다
+                </p>
               ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </CollapsibleTrigger>
+                goalHistory.map((record) => {
+                  const goalStartDate = new Date(record.goal.startDate);
+                  const goalEndDate = record.goal.endDate
+                    ? new Date(record.goal.endDate)
+                    : null;
+                  const periodStr = goalEndDate
+                    ? `${formatKoreanDate(goalStartDate)}~${formatKoreanDate(
+                        goalEndDate
+                      )}`
+                    : `${formatKoreanDate(goalStartDate)}~`;
 
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                {goalHistory.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    아직 기록이 없습니다
-                  </p>
-                ) : (
-                  goalHistory.map((record) => {
-                    const goalStartDate = new Date(record.goal.startDate);
-                    const goalEndDate = record.goal.endDate
-                      ? new Date(record.goal.endDate)
-                      : null;
-                    const periodStr = goalEndDate
-                      ? `${formatKoreanDate(goalStartDate)}~${formatKoreanDate(
-                          goalEndDate
-                        )}`
-                      : `${formatKoreanDate(goalStartDate)}~`;
-
-                    return (
-                      <div
-                        key={record.id}
-                        className="bg-secondary/30 rounded-lg p-3 space-y-2 group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {periodStr}
-                            </Badge>
-                          </div>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-7 h-7"
-                              onClick={() => {
-                                addGoal(record.goal);
-                                removeGoalHistory(record.id);
-                                setEditingGoalId(record.goal.id);
-                              }}
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-7 h-7 text-destructive hover:text-destructive"
-                              onClick={() => removeGoalHistory(record.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
+                  return (
+                    <div
+                      key={record.id}
+                      className="bg-secondary/30 rounded-lg p-3 space-y-2 group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {periodStr}
+                          </Badge>
                         </div>
-                        {/* Career Path as main display */}
-                        <p className="text-sm font-medium text-foreground">
-                          {record.goal.careerPath || "(커리어 패스 없음)"}
-                        </p>
-                        {/* Result if exists */}
-                        {record.goal.result && (
-                          <p className="text-xs text-primary">
-                            결과: {record.goal.result}
-                          </p>
-                        )}
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7"
+                            onClick={() => {
+                              addGoal(record.goal);
+                              removeGoalHistory(record.id);
+                              setEditingGoalId(record.goal.id);
+                            }}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7 text-destructive hover:text-destructive"
+                            onClick={() => removeGoalHistory(record.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
+                      {/* Career Path as main display */}
+                      <p className="text-sm font-medium text-foreground">
+                        {record.goal.careerPath || "(커리어 패스 없음)"}
+                      </p>
+                      {/* Result if exists */}
+                      {record.goal.result && (
+                        <p className="text-xs text-primary">
+                          결과: {record.goal.result}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
 
       {/* Goals Edit Dialog */}
       {editingGoalId && (
