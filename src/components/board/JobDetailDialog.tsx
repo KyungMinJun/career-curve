@@ -89,7 +89,7 @@ export function JobDetailDialog({
     if (job.companyCriteriaScores?.length) {
       return job.companyCriteriaScores;
     }
-    const activeGoals = currentGoals.filter((g) => !g.endDate);
+    const activeGoals = currentGoals;
     if (activeGoals.length === 0) return [];
     // Merge criteria from all goals, dedup by name (take first occurrence)
     const criteriaMap = new Map<
