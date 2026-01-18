@@ -33,6 +33,7 @@ const ALLOWED_DOMAINS = [
   'career.co.kr',
   'jobs.lever.co',
   'boards.greenhouse.io',
+  'job-boards.greenhouse.io',
   'jobs.ashbyhq.com',
   'apply.workable.com',
   'jobs.smartrecruiters.com',
