@@ -156,12 +156,32 @@ export function CareerTab() {
     ? resumes.find((r) => r.id === logResumeId)
     : undefined;
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const validatePdfMagicBytes = async (file: File): Promise<boolean> => {
+    // PDF 파일은 "%PDF-" (0x25 0x50 0x44 0x46 0x2D)로 시작해야 함
+    const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+
+    const buffer = await file.slice(0, 5).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    return PDF_MAGIC_BYTES.every((byte, index) => bytes[index] === byte);
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       toast.error("PDF 파일만 업로드 가능합니다");
+      return;
+    }
+
+    // PDF Magic Bytes 검증 - 확장자 위장 방지
+    const isValidPdf = await validatePdfMagicBytes(file);
+    if (!isValidPdf) {
+      toast.error("유효하지 않은 PDF 파일입니다. 실제 PDF 파일을 업로드해주세요.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
 
