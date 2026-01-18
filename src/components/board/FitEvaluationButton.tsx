@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles } from 'lucide-react';
 import { Experience, KeyCompetency, MinimumRequirementsCheck } from '@/types/job';
 import { supabase } from '@/integrations/supabase/client';
+import { getFunctionErrorMessage } from '@/integrations/supabase/functionErrors';
 import { toast } from 'sonner';
 
 interface FitEvaluationButtonProps {
@@ -31,7 +32,7 @@ export function FitEvaluationButton({ keyCompetencies, experiences, minExperienc
         }
       });
 
-      if (error) throw error;
+      if (error) throw new Error(getFunctionErrorMessage(error, '적합도 평가에 실패했습니다.'));
 
       // Handle errors from server
       if (!data?.success && data?.error) {
@@ -44,7 +45,7 @@ export function FitEvaluationButton({ keyCompetencies, experiences, minExperienc
       }
     } catch (error) {
       console.error('Fit evaluation error:', error);
-      toast.error('평가 중 오류가 발생했습니다');
+      toast.error(error instanceof Error ? error.message : '평가 중 오류가 발생했습니다');
     } finally {
       setIsLoading(false);
     }

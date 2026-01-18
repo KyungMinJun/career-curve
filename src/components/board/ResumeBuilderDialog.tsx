@@ -14,6 +14,7 @@ import {
 import { FileText, CheckCircle2, Loader2, Copy, ArrowRight, Save, ExternalLink, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getFunctionErrorMessage } from '@/integrations/supabase/functionErrors';
 import { useData } from '@/contexts/DataContext';
 
 interface ResumeBuilderDialogProps {
@@ -164,14 +165,10 @@ export function ResumeBuilderDialog({
         return;
       }
 
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(getFunctionErrorMessage(error, '이력서 생성에 실패했습니다.'));
       
       // Handle specific error codes from server-side credit check
       if (!data?.success && data?.error) {
-        if (data.error === 'Insufficient resume credits') {
-          toast.error('이력서 생성 횟수를 모두 사용했습니다.');
-          return;
-        }
         throw new Error(data.error);
       }
 
@@ -512,4 +509,3 @@ function ExperienceCheckbox({
     </div>
   );
 }
-

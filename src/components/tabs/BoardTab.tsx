@@ -20,6 +20,7 @@ import { JobStatus } from "@/types/job";
 import { cn } from "@/lib/utils";
 import { STATUS_ORDER } from "@/components/board/constants";
 import { supabase } from "@/integrations/supabase/client";
+import { getFunctionErrorMessage } from "@/integrations/supabase/functionErrors";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -165,12 +166,12 @@ export function BoardTab() {
     });
 
     if (error) {
-      console.error("Edge function error:", error.message);
-      throw new Error(error.message || "Failed to analyze job posting");
+      console.error("Edge function error:", error);
+      throw new Error(getFunctionErrorMessage(error, "공고 분석에 실패했습니다."));
     }
 
-    if (!data.success) {
-      throw new Error(data.error || "Failed to analyze job posting");
+    if (!data?.success) {
+      throw new Error(data?.error || "공고 분석에 실패했습니다.");
     }
 
     return data.data;

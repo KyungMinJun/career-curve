@@ -63,6 +63,7 @@ import {
   TailoredResume,
 } from "@/types/job";
 import { supabase } from "@/integrations/supabase/client";
+import { getFunctionErrorMessage } from "@/integrations/supabase/functionErrors";
 import { extractTextFromPdf, renderPdfToImageDataUrls } from "@/lib/pdfParser";
 import { exportResumeToDocx } from "@/lib/resumeExporter";
 import {
@@ -278,7 +279,9 @@ export function CareerTab() {
           }
         );
 
-        if (error) throw error;
+        if (error) {
+          throw new Error(getFunctionErrorMessage(error, "이력서 분석에 실패했습니다."));
+        }
 
         // (진단) OCR 텍스트도 저장
         updateResume(newResumeId, {
@@ -373,7 +376,9 @@ export function CareerTab() {
           parseStatus: "fail",
           parseError: "분석 실패",
         });
-        toast.error("이력서 분석에 실패했습니다.");
+        toast.error(
+          parseError instanceof Error ? parseError.message : "이력서 분석에 실패했습니다."
+        );
       }
     } catch (error) {
       toast.error("업로드 실패. 다시 시도해주세요.");

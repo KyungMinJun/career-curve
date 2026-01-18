@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { ProfileEditSheet } from './ProfileEditSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { getFunctionErrorMessage } from '@/integrations/supabase/functionErrors';
 
 interface AccountSheetProps {
   open: boolean;
@@ -110,7 +111,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
       const { error } = await supabase.functions.invoke('delete-account');
       if (error) {
         console.error('Delete account error:', error);
-        throw new Error(error.message);
+        throw new Error(getFunctionErrorMessage(error, '계정 삭제에 실패했습니다.'));
       }
 
       // 1) Sign out (token/session may be stale after deletion)
@@ -203,4 +204,3 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
     </>
   );
 }
-
