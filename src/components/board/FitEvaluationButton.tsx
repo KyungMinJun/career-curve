@@ -32,7 +32,11 @@ export function FitEvaluationButton({ keyCompetencies, experiences, minExperienc
         }
       });
 
-      if (error) throw new Error(getFunctionErrorMessage(error, '적합도 평가에 실패했습니다.'));
+      if (error) {
+        throw new Error(
+          await getFunctionErrorMessage(error, '적합도 평가에 실패했습니다.')
+        );
+      }
 
       // Handle errors from server
       if (!data?.success && data?.error) {

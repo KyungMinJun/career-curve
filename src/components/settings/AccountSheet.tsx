@@ -111,7 +111,9 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
       const { error } = await supabase.functions.invoke('delete-account');
       if (error) {
         console.error('Delete account error:', error);
-        throw new Error(getFunctionErrorMessage(error, '계정 삭제에 실패했습니다.'));
+        throw new Error(
+          await getFunctionErrorMessage(error, '계정 삭제에 실패했습니다.')
+        );
       }
 
       // 1) Sign out (token/session may be stale after deletion)

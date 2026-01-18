@@ -300,7 +300,9 @@ export function CareerTab() {
         );
 
         if (error) {
-          throw new Error(getFunctionErrorMessage(error, "이력서 분석에 실패했습니다."));
+          throw new Error(
+            await getFunctionErrorMessage(error, "이력서 분석에 실패했습니다.")
+          );
         }
 
         // (진단) OCR 텍스트도 저장

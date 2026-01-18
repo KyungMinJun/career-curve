@@ -167,7 +167,9 @@ export function BoardTab() {
 
     if (error) {
       console.error("Edge function error:", error);
-      throw new Error(getFunctionErrorMessage(error, "공고 분석에 실패했습니다."));
+      throw new Error(
+        await getFunctionErrorMessage(error, "공고 분석에 실패했습니다.")
+      );
     }
 
     if (!data?.success) {

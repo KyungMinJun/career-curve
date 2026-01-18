@@ -165,7 +165,11 @@ export function ResumeBuilderDialog({
         return;
       }
 
-      if (error) throw new Error(getFunctionErrorMessage(error, '이력서 생성에 실패했습니다.'));
+      if (error) {
+        throw new Error(
+          await getFunctionErrorMessage(error, '이력서 생성에 실패했습니다.')
+        );
+      }
       
       // Handle specific error codes from server-side credit check
       if (!data?.success && data?.error) {

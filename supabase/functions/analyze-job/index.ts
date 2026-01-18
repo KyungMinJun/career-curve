@@ -375,11 +375,16 @@ Treat the job posting as a hiring decision document, not a simple description.
 
 CRITICAL INSTRUCTIONS:
 
+0. Determine if the content is actually a job posting:
+   - If it is NOT a job posting, set "isJobPosting" to false.
+   - If it IS a job posting, set "isJobPosting" to true.
+
 1. Determine the original language of the job posting content:
    - Korean (ko) or English (en)
    - Return the field "language" as either "ko" or "en"
 
 2. For ALL text fields (companyName, title, position, summary, keyCompetencies.title, keyCompetencies.description, all evidence fields):
+   - Use the SAME language as the original posting
    - Use the SAME language as the original posting
    - Evidence must be an EXACT source sentence from the posting (verbatim, no translation, no paraphrasing)
 
@@ -463,7 +468,7 @@ OUTPUT FORMAT RULES:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Page title: ${pageTitle}\n\nJob posting content:\n${pageContent.substring(0, 15000)}` }
       ],
-       tools: [
+      tools: [
          {
            type: "function",
            function: {
@@ -472,6 +477,7 @@ OUTPUT FORMAT RULES:
              parameters: {
                type: "object",
                properties: {
+                 isJobPosting: { type: "boolean" },
                  language: { type: "string", enum: ["ko", "en"] },
                  companyName: { type: "string" },
                  title: { type: "string" },
@@ -501,7 +507,7 @@ OUTPUT FORMAT RULES:
                  companyScore: { type: "number" },
                  fitScore: { type: "number" }
                },
-               required: ["language", "companyName", "title", "position", "summary", "keyCompetencies"],
+               required: ["isJobPosting", "language", "companyName", "title", "position", "summary", "keyCompetencies"],
                additionalProperties: false
              }
            }
@@ -557,6 +563,16 @@ OUTPUT FORMAT RULES:
           success: false, 
           error: '공고 내용을 추출할 수 없습니다. 페이지가 마감되었거나 접근할 수 없는 상태일 수 있습니다.',
           noContent: true
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (jobData.isJobPosting === false) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: '공고가 아닙니다. 채용 공고 URL을 입력해주세요.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
