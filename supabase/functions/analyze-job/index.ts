@@ -368,34 +368,93 @@ serve(async (req) => {
     }
 
     // Step 2: Use AI to analyze and extract job posting information
-    const systemPrompt = `You are a job posting analyzer. Extract structured information from job postings.
+    const systemPrompt = `You are a job posting analyzer.
+
+Your task is to extract structured information from a job posting.
+Treat the job posting as a hiring decision document, not a simple description.
 
 CRITICAL INSTRUCTIONS:
-1. Determine the original language of the job posting content: Korean (ko) or English (en).
-2. Return the field "language" as either "ko" or "en".
-3. For ALL text fields (companyName, title, position, summary, keyCompetencies.title/description, evidence strings):
-   - Use the SAME language as the original posting.
-   - Evidence must be an exact source sentence from the posting (do not translate evidence).
-4. If a field is not mentioned, set it to null and set evidence to "Not specified" (English) or "공고에 명시되지 않음" (Korean), matching the posting language.
-5. For keyCompetencies: Extract EXACTLY 5 key competencies from the RECRUITER'S perspective.
 
-Extract and return:
+1. Determine the original language of the job posting content:
+   - Korean (ko) or English (en)
+   - Return the field "language" as either "ko" or "en"
+
+2. For ALL text fields (companyName, title, position, summary, keyCompetencies.title, keyCompetencies.description, all evidence fields):
+   - Use the SAME language as the original posting
+   - Evidence must be an EXACT source sentence from the posting (verbatim, no translation, no paraphrasing)
+
+3. If a field is not mentioned:
+   - Set the value to null
+   - Set evidence to:
+     - "Not specified" (English)
+     - "공고에 명시되지 않음" (Korean)
+   - Match the posting language exactly
+
+4. Key interpretation rule (VERY IMPORTANT):
+   - Do NOT simply list skills, responsibilities, or tools.
+   - Extract what the recruiter is ACTUALLY evaluating when deciding pass/fail.
+   - Combine experience and competency when they function as a single hiring criterion.
+   - Exclude generic traits (e.g. “good communication”) unless they clearly affect hiring decisions.
+   - Prioritize based on repetition, emphasis, and hiring risk if missing.
+
+5. For keyCompetencies:
+   - Extract EXACTLY 5 key competencies from the RECRUITER’S perspective.
+   - These must represent the CORE hiring evaluation axes.
+   - Each competency must be:
+     - Non-overlapping
+     - Non-substitutable
+     - Critical enough that missing it would increase hiring risk
+   - Order the 5 competencies by importance (most critical first).
+   - Write each competency as a capability the candidate must already demonstrate (not a task list).
+
+---
+
+EXTRACT AND RETURN:
+
 - language: "ko" | "en"
+
 - companyName: company name
+
 - title: job title
-- position: position category like "Frontend", "Backend", "Product Design", "PM" etc
+
+- position: position category
+  (e.g. "Frontend", "Backend", "Product Design", "PM", "Program Management", etc.)
+
 - minExperience: minimum experience required (nullable)
 - minExperienceEvidence: exact source sentence
+
 - workType: work type (nullable)
 - workTypeEvidence: exact source sentence
+
 - location: work location (nullable)
 - locationEvidence: exact source sentence
-- visaSponsorship: boolean or null (if not mentioned)
+
+- visaSponsorship: boolean or null
 - visaSponsorshipEvidence: exact source sentence
-- summary: 3-4 sentence summary of the role (same language as posting)
-- keyCompetencies: array of EXACTLY 5 objects with {title, description}
-- companyScore: number 1-5
-- fitScore: number 1-5
+
+- summary:
+  Write a 3–4 sentence summary of the role that explains:
+  - Why this role exists
+  - What success looks like
+  - What failure would look like
+  (Use the original posting language only.)
+
+- keyCompetencies:
+  An array of EXACTLY 5 objects.
+  Each object must include:
+  {
+    title: concise recruiter-style evaluation label,
+    description: what the recruiter is truly evaluating (experience + competency combined)
+  }
+
+- companyScore: number (1–5)
+- fitScore: number (1–5)
+
+OUTPUT FORMAT RULES:
+- Follow the field order above.
+- Do NOT add extra fields.
+- Do NOT include explanations outside the extracted results.
+- Do NOT infer or assume anything not grounded in the posting text.
 `;
 
     const aiResponse = await callGeminiFromLovable({
